@@ -10,7 +10,7 @@ env:
 before_deploy:
   - git config --local user.name "Continuous Integration Automation"
   - git config --local user.email "ci@segence.com"
-  - ./scripts/stage.sh generate-tag
+  - "./scripts/stage.sh generate-tag"
 deploy:
   - provider: script
     script: "./scripts/stage.sh publish-to-bintray"
@@ -18,7 +18,7 @@ deploy:
       branch: master
   - provider: releases
     api_key:
-      secure: ujli1i95zPxRYWdl5cQdiEq+Gt27vN/nsxG56ycut6rgHdf3yguBqORa+VQh4neUjFSR4nGr0PqOGA2/A1b3SmLwNTEfmK8WCOi3LgxwSR6H7TaxdZYK0tmz7f5wnqiHaHLMbfpZv8KPAZyomoOvLduusjy56YR7XbaD2jQfLOrzqxJTZagR7cTMFLXsLkyFOzsHBy+XViK12SCcTS0fMgewk4esPesjBlS6CwH8iKLbRN2lhvNuFqsT9D5x2Z+GW8woAaQz4Z51hitjuCr+y/fLx3VfhXU/KOOn0C9SoresPyH6WsyknfpjPyeQH/MhbNvcdJuXdk+P2PTGegkJnEaHvCRLnsWNu3PTQirDIq8/ADz/5K7uDZWkTyPiW5ep2xI5NylzJNxAeea7emLI6p2UpAN3G2s1Sw13NLQLoit3nnBinxzfHh3GH1xGWukKfiFqvOGtkhIiYLHxfkHMvkWSOUcDgYpVz7ylXYEbToIl6nlJto64KnA9zezG25WFexc66YfchjyZQL6RGlUBgkPZSIIQRe6M9HgRn848b1bTPzQ8c0cAEVWNJMoIJL6IRd6GLdcCvRrSlBkc6Jy2wWQ+Xdnz+4ANEiRI6Z3qKEnc1dBUPtZ0iv7zaTnc/jsXlANARVGn18lHxlgeV1CBhxPaI0SGoDkKffffyBsAU/o=
+      secure: XmxK7PdqNItA3UiHMaw9NhyWQiw9u2MRgCj2vQnv6oC8sOoxBfI02wQEb1O2K/6HV5pXsSSz2sIIUmV4TA9U13rOOilEqQNR6Vn6ZQYsRbnsy3rHlig9kEUdzIev+4pAtw7Y0vKuhBo0LwaLwOxkay3tmiLxN0fxIo9LODLeZncnIJENxg35P5L65bQMQMG9fpxo310xmxqWcsZtX4Drb68/KrHN+d3s2hAh2XiCIYiuEqvvxDVIBlglMEfr1oHRfaeYZCsm9Ai8KN3VHSyE+cndeuMPmA+rENCAHTYkn/kcYDavRBV0Q/G8nNhf7RVJrgS3yCbBroCwe3KzIAxwtaEcdX5iqaqWDLY3y4IAqQfZnh1YVaFMGtCVBY2RmVpj1h0VOXtS/LOZwl02fmpzfDWi5vL5/Mf0XWJc12uA9KLL605BCQbn7sbbCHW+jGFAwsHKa4bL5AmrpDsnqKEI8ESIvHZD5hZbPIpSaHLMxmM9JltxmOeQUU9Rshnhy0aGQaV1BfvP1BfQay9MmDzgQn8o2rrM3Cc7ih+VZDC1HqjxbRECd20XG25Laf63guxpM3m7x0dGKbr/Pu0o2dxIooYSPJl9EpxSE/J8XWygAq8B67rpCIYQZDzB70halANkhFL7rLv/IICM5PyDvzP5KM2W8am9QLMetJFnEfWtiZ8=
     on:
       repo: Segence/kamon-jmx-collector
       branch: master
