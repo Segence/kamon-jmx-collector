@@ -48,9 +48,11 @@ class MetricCollectorSpec extends WordSpec {
     }
     "generating metrics" should {
       "generate all valid metrics" in new Fixture {
+        val numberOfCPUs = Runtime.getRuntime().availableProcessors().toLong
+
         val (results, errors) = generateMetrics(configWithValidMBeansAndAttributes)
 
-        results shouldBe Map("jmx-os-mbean-AvailableProcessors" -> 8L)
+        results shouldBe Map("jmx-os-mbean-AvailableProcessors" -> numberOfCPUs)
         errors.length shouldBe 2
       }
     }
