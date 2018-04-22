@@ -6,7 +6,7 @@ import kamon.jmx.collector.SupportedKamonMetricTypes.SupportedKamonMetricType
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
-case class JmxMetricAttribute(attributeName: String, metricType: SupportedKamonMetricType[_])
+case class JmxMetricAttribute(attributeName: String, metricType: SupportedKamonMetricType)
 case class JmxMetricConfiguration(metricName: String, jmxMbeanQuery: String, attributes: List[JmxMetricAttribute])
 case class JmxCollectorConfiguration(initialDelay: FiniteDuration, checkInterval: FiniteDuration, metrics: List[JmxMetricConfiguration])
 

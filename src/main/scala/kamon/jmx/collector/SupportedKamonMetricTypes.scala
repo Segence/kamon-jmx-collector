@@ -1,23 +1,36 @@
 package kamon.jmx.collector
 
 import kamon.Kamon
-import kamon.metric.{CounterMetric, HistogramMetric}
+import kamon.metric._
 
 private[collector] object SupportedKamonMetricTypes {
 
-  sealed trait SupportedKamonMetricType[T] {
-    def registerMetric(metricName: String): T
+  // TODO add test
+  case class SupportedKamonMetric[T](supportedMetric: SupportedKamonMetricType, metricInstrument: Metric[T]) {
+    def record(value: Long): Unit = metricInstrument match {
+      case counter: CounterMetric => counter.increment(value)
+      case histogram: HistogramMetric => histogram.record(value)
+      case _ =>
+    }
   }
 
-  case object Counter extends SupportedKamonMetricType[CounterMetric] {
-    override def registerMetric(metricName: String): CounterMetric = Kamon.counter(metricName)
+  sealed trait SupportedKamonMetricType {
+    type T
+    def registerMetric(metricName: String): Metric[T]
   }
 
-  case object Histogram extends SupportedKamonMetricType[HistogramMetric] {
-    override def registerMetric(metricName: String): HistogramMetric = Kamon.histogram(metricName)
+  case object Counter extends SupportedKamonMetricType {
+    override type T = Counter
+    override def registerMetric(metricName: String): Metric[T] = Kamon.counter(metricName)
   }
 
-  def parse: PartialFunction[String, SupportedKamonMetricType[_]] = {
+  case object Histogram extends SupportedKamonMetricType {
+    override type T = Histogram
+    override def registerMetric(metricName: String): Metric[T] = Kamon.histogram(metricName)
+  }
+
+  // TODO add test
+  def parse: PartialFunction[String, SupportedKamonMetricType] = {
     case "counter" => Counter
     case "histogram" => Histogram
     case invalidMetricType => throw new IllegalArgumentException(s"Provided metric type[$invalidMetricType] is not valid")

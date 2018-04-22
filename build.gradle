@@ -61,7 +61,11 @@ dependencies {
     "org.mockito:mockito-core:${mockitoVersion}",
     "org.scala-lang:scala-library:${scalaVersion}",
     "com.typesafe:config:${typesafeConfigVersion}",
-    "io.kamon:kamon-core_${scalaMajorMinorVersion}:${kamonVersion}"
+    "io.kamon:kamon-core_${scalaMajorMinorVersion}:${kamonVersion}",
+    "com.typesafe.akka:akka-actor_${scalaMajorMinorVersion}:${akkaVersion}",
+    "io.kamon:kamon-prometheus_${scalaMajorMinorVersion}:1.0.0",
+    "org.slf4j:slf4j-api:1.7.25",
+    "org.slf4j:slf4j-simple:1.7.25"
   )
   testRuntime "org.pegdown:pegdown:${pegdownVersion}"
 }

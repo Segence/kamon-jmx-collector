@@ -4,6 +4,7 @@ import java.util.Optional
 
 import com.segence.commons.jmx.collector.JmxCollector
 import javax.management.ObjectName
+import javax.management.openmbean.{CompositeDataSupport, CompositeType}
 import kamon.jmx.collector.SupportedKamonMetricTypes.SupportedKamonMetricType
 
 import scala.annotation.tailrec
@@ -101,7 +102,7 @@ private[collector] object MetricCollector {
         }
     }
 
-  private[collector] def generateMetricDefinitions(configuration: List[JmxMetricConfiguration]): Map[String, SupportedKamonMetricType[_]] = {
+  private[collector] def generateMetricDefinitions(configuration: List[JmxMetricConfiguration]): Map[String, SupportedKamonMetricType] = {
     for {
       metricConfiguration <- configuration
       attribute <- metricConfiguration.attributes
