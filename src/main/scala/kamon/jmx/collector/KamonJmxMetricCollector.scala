@@ -18,7 +18,7 @@ object KamonJmxMetricCollector extends Configuration {
 
     val metrics = MetricCollector.generateMetricDefinitions(metricConfiguration.metrics).map { case (metricName, metricType) =>
       val kamonMetric = metricType.registerMetric(metricName)
-      (metricName, SupportedKamonMetric(metricType, kamonMetric))
+      (metricName, SupportedKamonMetric(kamonMetric))
     }.toList
 
     lazy val jmxMetricCollectorActor = system.actorOf(Props(new JmxMetricCollectorActor(metrics, metricConfiguration.metrics)))

@@ -5,8 +5,7 @@ import kamon.metric._
 
 private[collector] object SupportedKamonMetricTypes {
 
-  // TODO add test
-  case class SupportedKamonMetric[T](supportedMetric: SupportedKamonMetricType, metricInstrument: Metric[T]) {
+  case class SupportedKamonMetric[T](metricInstrument: Metric[T]) {
     def record(value: Long): Unit = metricInstrument match {
       case counter: CounterMetric => counter.increment(value)
       case histogram: HistogramMetric => histogram.record(value)
@@ -29,7 +28,6 @@ private[collector] object SupportedKamonMetricTypes {
     override def registerMetric(metricName: String): Metric[T] = Kamon.histogram(metricName)
   }
 
-  // TODO add test
   def parse: PartialFunction[String, SupportedKamonMetricType] = {
     case "counter" => Counter
     case "histogram" => Histogram

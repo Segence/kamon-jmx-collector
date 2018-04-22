@@ -70,13 +70,6 @@ dependencies {
   testRuntime "org.pegdown:pegdown:${pegdownVersion}"
 }
 
-test {
-  testLogging {
-    events = ["passed", "failed", "skipped"]
-    showStandardStreams = true
-  }
-}
-
 publishing {
   publications {
     ProjectPublication(MavenPublication) {
