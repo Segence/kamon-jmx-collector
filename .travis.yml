@@ -1,0 +1,24 @@
+language: java
+jobs:
+  include:
+  - stage: test
+    script: "./scripts/stage.sh unit-test"
+env:
+  global:
+  - BINTRAY_USER=robvadai
+  - secure: p3Ft3z9hQ2e08Or5k6LLcC4jKmFq08S/hdhWTkRY7TvNcjHjRK42f7xOKJliCJgLpUDOgMu6TT/qgV2oQsTpUVeDcPF3FOasbYj+8nGTLKHb4rYOf4WU3MmtbfwaZCXSr4Xw5SgPgxglOUPDzNF7TtABxpOKOYSHp+T6k7v7xI5dIHDjeyLaL/OXTmwqTkt2TfwBQsIuPIya+7w6xBwCvqT0Qgjj4FQq5k0e24maXkD3aQLbFd+mna/tJBfV700Zrelj8FdsZuJGVGxlX/UWfPTzIzNXBRPMuZCngs81maDTmNb69vx728R3vUMLvO/VAQxgCi/luZdOXzGa4OHTPVlAxubjIN+sP5c3Pm/tnhFhtE51IoiRsViuR7+POsY5Y9b9c9QNHfenljvQe/pdMz2qMSgmXEJTdqUWRpGU1U6XBJLDLLhOA0pAS4XSm7tyhE8iLhIZ6Wl7GdSbkVtlyFf7vyK8DsQLwFxxM9E14evCaBdVDUc4rq6d23VdcmYMBeUkvOpBugUTbpsUlp5hJbMTwTKYAmKZyUTHjxTE+ynA1KMnrHsnSo+jY45eDJGEzHWJi2J2qHxPuLP8qhfA5igwQSCwWjOTw4mQrbhCUZRDBCsgqeGM1Lm8aXPOmMvhG3+giWTRvkl3+eOcYo/kqywFLHmt+MQCkIF1UQZYZ6Y=
+before_deploy:
+  - git config --local user.name "Continuous Integration Automation"
+  - git config --local user.email "ci@segence.com"
+  - ./scripts/stage.sh generate-tag
+deploy:
+  - provider: script
+    script: "./scripts/stage.sh publish-to-bintray"
+    on:
+      branch: master
+  - provider: releases
+    api_key:
+      secure: ujli1i95zPxRYWdl5cQdiEq+Gt27vN/nsxG56ycut6rgHdf3yguBqORa+VQh4neUjFSR4nGr0PqOGA2/A1b3SmLwNTEfmK8WCOi3LgxwSR6H7TaxdZYK0tmz7f5wnqiHaHLMbfpZv8KPAZyomoOvLduusjy56YR7XbaD2jQfLOrzqxJTZagR7cTMFLXsLkyFOzsHBy+XViK12SCcTS0fMgewk4esPesjBlS6CwH8iKLbRN2lhvNuFqsT9D5x2Z+GW8woAaQz4Z51hitjuCr+y/fLx3VfhXU/KOOn0C9SoresPyH6WsyknfpjPyeQH/MhbNvcdJuXdk+P2PTGegkJnEaHvCRLnsWNu3PTQirDIq8/ADz/5K7uDZWkTyPiW5ep2xI5NylzJNxAeea7emLI6p2UpAN3G2s1Sw13NLQLoit3nnBinxzfHh3GH1xGWukKfiFqvOGtkhIiYLHxfkHMvkWSOUcDgYpVz7ylXYEbToIl6nlJto64KnA9zezG25WFexc66YfchjyZQL6RGlUBgkPZSIIQRe6M9HgRn848b1bTPzQ8c0cAEVWNJMoIJL6IRd6GLdcCvRrSlBkc6Jy2wWQ+Xdnz+4ANEiRI6Z3qKEnc1dBUPtZ0iv7zaTnc/jsXlANARVGn18lHxlgeV1CBhxPaI0SGoDkKffffyBsAU/o=
+    on:
+      repo: Segence/kamon-jmx-collector
+      branch: master
