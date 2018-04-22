@@ -80,6 +80,8 @@ test {
 publishing {
   publications {
     ProjectPublication(MavenPublication) {
+      artifactId "${artifactId}_${scalaMajorMinorVersion}"
+
       from components.java
 
       artifact sourceJar {
