@@ -32,9 +32,9 @@ Usage
      - Gradle example:
      ```$groovy
       compile(
-        "io.kamon:kamon-core_212:1.1.2",
+        "io.kamon:kamon-core_2.12:1.1.2",
         "com.typesafe:config:1.3.2",
-        "com.typesafe.akka:akka-actor_212:2.5.12"
+        "com.typesafe.akka:akka-actor_2.12:2.5.12"
       )
      ```
  4. Add a configuration to your `application.conf` file describing the `MBeans` to query. Example:
