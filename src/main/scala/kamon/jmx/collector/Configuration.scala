@@ -16,7 +16,7 @@ private[collector] trait Configuration {
     val kamonJmxCollectorConfig = config.getConfig("kamon.jmx-collector")
 
     val initialDelay: FiniteDuration = Duration.fromNanos( kamonJmxCollectorConfig.getDuration("initial-delay").toNanos )
-    val checkInterval: FiniteDuration = Duration.fromNanos( kamonJmxCollectorConfig.getDuration("value-check-interval-ms").toNanos )
+    val checkInterval: FiniteDuration = Duration.fromNanos( kamonJmxCollectorConfig.getDuration("value-check-interval").toNanos )
 
     val mbeans = kamonJmxCollectorConfig.getObjectList("mbeans").asScala.toList.map { confObj =>
       val nameObj = confObj.get("metric-name")
