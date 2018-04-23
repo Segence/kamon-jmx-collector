@@ -108,4 +108,4 @@ This shows us the available attribute keys: `committed`, `init`, `max` and `used
 Some of these attribute keys have to be defined in the configuration in order to pass them to Kamon.
 They have to be added under the parameter `kamon.jmx-collector.mbeans[*].attributes[*].keys` as a JSON array like `["committed", "init", "max", "used]`.
 
-[exploring-mbeans]: https://github.com/Segence/kamon-jmx-collector/exploring-mbeans.png "Exploring available MBeans in VisualVM"
+[exploring-mbeans]: https://github.com/Segence/kamon-jmx-collector/blob/master/exploring-mbeans.png "Exploring available MBeans in VisualVM"
