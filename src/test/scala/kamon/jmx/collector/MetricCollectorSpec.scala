@@ -28,8 +28,11 @@ class MetricCollectorSpec extends WordSpec {
       }
     }
     "generate a metric name from a metric and attribute name pair" should {
-      "return a valid metric name" in {
+      "return a valid metric name without attribute key name" in {
         generateMetricName("AAA", "BBB") shouldBe "jmx-AAA-BBB"
+      }
+      "return a valid metric name with an attribute key name" in {
+        generateMetricName("AAA", "BBB", Some("CCC")) shouldBe "jmx-AAA-BBB-CCC"
       }
     }
     "getting an attribute value" should {
@@ -48,12 +51,17 @@ class MetricCollectorSpec extends WordSpec {
     }
     "generating metrics" should {
       "generate all valid metrics" in new Fixture {
-        val numberOfCPUs = Runtime.getRuntime().availableProcessors().toLong
+        val numberOfCPUs = Runtime.getRuntime.availableProcessors.toLong
 
         val (results, errors) = generateMetrics(configWithValidMBeansAndAttributes)
 
-        results shouldBe Map("jmx-os-mbean-AvailableProcessors" -> numberOfCPUs)
-        errors.length shouldBe 2
+        results.size shouldBe 3
+
+        results.get("jmx-os-mbean-AvailableProcessors") shouldBe Some(numberOfCPUs)
+        results.get("jmx-memory-mbean-HeapMemoryUsage-committed").nonEmpty shouldBe true
+        results.get("jmx-memory-mbean-HeapMemoryUsage-max").nonEmpty shouldBe true
+
+        errors.length shouldBe 1
       }
     }
     "generating metric definitions" should {
@@ -63,7 +71,8 @@ class MetricCollectorSpec extends WordSpec {
         results shouldBe Map(
           "jmx-os-mbean-AvailableProcessors" -> Counter,
           "jmx-os-mbean-Arch" -> Histogram,
-          "jmx-memory-mbean-HeapMemoryUsage" -> Counter,
+          "jmx-memory-mbean-HeapMemoryUsage-committed" -> Counter,
+          "jmx-memory-mbean-HeapMemoryUsage-max" -> Counter,
           "jmx-memory-mbean-gc" -> Histogram
         )
       }
@@ -79,10 +88,14 @@ class MetricCollectorSpec extends WordSpec {
 
     val configWithValidMBeansAndAttributes =
       JmxMetricConfiguration("os-mbean", "java.lang:type=OperatingSystem",
-                             JmxMetricAttribute("AvailableProcessors", Counter) :: JmxMetricAttribute("Arch", Histogram) :: Nil
+                             JmxMetricAttribute("AvailableProcessors", Counter) ::
+                             JmxMetricAttribute("Arch", Histogram) ::
+                             Nil
       ) ::
       JmxMetricConfiguration("memory-mbean", "java.lang:type=Memory",
-        JmxMetricAttribute("HeapMemoryUsage", Counter) :: JmxMetricAttribute("gc", Histogram) :: Nil
+                             JmxMetricAttribute("HeapMemoryUsage", Counter, "committed" :: "max" :: Nil) ::
+                             JmxMetricAttribute("gc", Histogram) ::
+                             Nil
       ) :: Nil
   }
 }

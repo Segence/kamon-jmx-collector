@@ -1,8 +1,10 @@
 language: java
 jobs:
   include:
-  - stage: test
+  - stage: unit-test
     script: "./scripts/stage.sh unit-test"
+  - stage: integration-test
+    script: "./scripts/stage.sh integration-test"
 env:
   global:
   - BINTRAY_USER=robvadai

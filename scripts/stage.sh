@@ -19,6 +19,10 @@ function unit-test {
     ./gradlew clean test
 }
 
+function integration-test {
+    ./gradlew clean integrationTest
+}
+
 function publish-local {
     ./gradlew clean test publishToMavenLocal
 }
@@ -45,6 +49,9 @@ case $GOAL in
     ;;
   unit-test)
     unit-test
+    ;;
+  integration-test)
+    integration-test
     ;;
   publish-local)
     publish-local
