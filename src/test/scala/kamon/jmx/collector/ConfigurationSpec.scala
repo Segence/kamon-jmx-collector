@@ -14,7 +14,9 @@ class ConfigurationSpec extends FlatSpec {
       JmxMetricConfiguration(
         "my-mbean",
         "test:type=exampleBean,name=*",
-        JmxMetricAttribute("Value1", Counter) :: JmxMetricAttribute("Value2", Histogram) :: Nil
+        JmxMetricAttribute("Value1", Counter, "composite-data-attribute1" :: "composite-data-attribute2" :: Nil) ::
+        JmxMetricAttribute("Value2", Histogram, Nil) ::
+        Nil
       ) :: Nil
     )
 
