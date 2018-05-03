@@ -11,11 +11,16 @@ import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
+private[collector] case class FullMetricName(metricName: String, metricNameSuffix: Option[String] = None) {
+  override def toString: String = s"$metricName${metricNameSuffix.fold("") { suffix => s"-$suffix" }}"
+}
+
 private[collector] object MetricCollector {
 
-  private[collector] def getMetricName(jmxObjectName: ObjectName, queryMbeansAndMetricNames: Map[ObjectName, String]): Option[String] =
+  private[collector] def getMetricName(jmxObjectName: ObjectName, queryMbeansAndMetricNames: Map[ObjectName, String]): Option[FullMetricName] =
     queryMbeansAndMetricNames.get(jmxObjectName) match {
-      case validResult @ Some(_) => validResult
+      case Some(validResult) =>
+        Option(FullMetricName(validResult))
       case _ => for {
         (objectName, metricName) <- queryMbeansAndMetricNames.find { case (objectName, _) => objectName.getDomain == jmxObjectName.getDomain }
         jmxMbeanProperties = objectName.getKeyPropertyList.entrySet.asScala
@@ -32,11 +37,11 @@ private[collector] object MetricCollector {
                                   queryProperty.getValue
                                 }.mkString("-")
 
-        s"$metricName-$metricNameSuffix"
+        FullMetricName(metricName, Option(metricNameSuffix))
       }
     }
 
-  private[collector] def collectMetrics(configuration: List[JmxMetricConfiguration]): (List[(String, String, Any, SupportedKamonMetricType)], List[Throwable]) = {
+  private[collector] def collectMetrics(configuration: List[JmxMetricConfiguration]): (List[(FullMetricName, String, Any, SupportedKamonMetricType)], List[Throwable]) = {
 
     val (successfulConfigWithObjectNames, errorsConfigWithObjectNames) = configuration.map { metricConfig =>
       Try {
@@ -50,15 +55,13 @@ private[collector] object MetricCollector {
       case _ => None
     }
 
-    val jmxMbeansAndAttributes = configWithObjectNames.map { case (_, jmxObjectName, attributes) =>
-      (jmxObjectName, attributes.map(_.attributeName).toSet.asJava)
-    }.toMap.asJava
+    val (jmxMbeansAndAttributes, jmxMbeansAndMetricNames) = configWithObjectNames.map { case (metricName, jmxObjectName, attributes) =>
+      (jmxObjectName -> attributes.map(_.attributeName).toSet.asJava, jmxObjectName -> metricName)
+    }.unzip
 
-    val jmxMbeansAndMetricNames = configWithObjectNames.map { case (metricName, jmxObjectName, _) =>
-      (jmxObjectName, metricName)
-    }.toMap
+    val jmxMbeansAndMetricNamesMap = jmxMbeansAndMetricNames.toMap
 
-    val metricNamesAndValues = JmxCollector.queryAsSet(jmxMbeansAndAttributes).asScala.toList.map { mbeanMetricResult =>
+    val metricNamesAndValues = JmxCollector.queryAsSet(jmxMbeansAndAttributes.toMap.asJava).asScala.toList.map { mbeanMetricResult =>
       val maybeMBeanMetric = asScalaOption(mbeanMetricResult.getMBeanMetric)
       val maybeError = asScalaOption(mbeanMetricResult.getError)
 
@@ -69,8 +72,8 @@ private[collector] object MetricCollector {
               (metricName, _, attributes) <- configWithObjectNames
               attributeConfig <- attributes
               attribute <- validMbeanMetric.getAttributes.asScala.toList
-              resolvedMetricName <- getMetricName(validMbeanMetric.getObjectInstance.getObjectName, jmxMbeansAndMetricNames)
-              if resolvedMetricName.startsWith(metricName) && attributeConfig.attributeName == attribute.getName
+              resolvedMetricName <- getMetricName(validMbeanMetric.getObjectInstance.getObjectName, jmxMbeansAndMetricNamesMap)
+              if resolvedMetricName.metricName == metricName && attributeConfig.attributeName == attribute.getName
             } yield (resolvedMetricName, attribute.getName, attribute.getValue, attributeConfig.metricType)
           }
         case (_, Some(error)) =>
@@ -175,9 +178,8 @@ private[collector] object MetricCollector {
       (metricName, attributeName, attributeValue, metricType) <- results
       configurationEntry <- configuration
       configurationAttribute <- configurationEntry.attributes
-      // TODO return a pair of metric name prefix and the rest and compare against the left side instead of using `startsWith`
-      if metricName.startsWith(configurationEntry.metricName) && attributeName == configurationAttribute.attributeName
-    } yield (metricName, attributeName, configurationAttribute.keys, attributeValue, metricType)
+      if metricName.metricName == configurationEntry.metricName && attributeName == configurationAttribute.attributeName
+    } yield (s"$metricName", attributeName, configurationAttribute.keys, attributeValue, metricType)
 
     val (validMetricResults, errorsInMetricResults) = extractMetricsAndErrors(resultsIncludingAttributeKeys, (Nil, Nil))
     (validMetricResults, errors ++ errorsInMetricResults)
