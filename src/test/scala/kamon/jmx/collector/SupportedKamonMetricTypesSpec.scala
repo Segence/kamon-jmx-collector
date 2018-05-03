@@ -2,8 +2,8 @@ package kamon.jmx.collector
 
 import org.scalatest.WordSpec
 import org.scalatest.Matchers._
-import SupportedKamonMetricTypes.{Counter, Histogram, SupportedKamonMetricType, parse}
-import kamon.metric.{CounterMetric, HistogramMetric}
+import SupportedKamonMetricTypes._
+import kamon.metric.{CounterMetric, GaugeMetric, HistogramMetric}
 import org.scalatest.mockito.MockitoSugar
 import org.mockito.Mockito.verify
 
@@ -20,6 +20,15 @@ class SupportedKamonMetricTypesSpec extends WordSpec {
       }
       "successfully parse a Histogram type" in {
         parse("histogram") shouldBe Histogram
+      }
+      "successfully parse an IncrementingGauge type" in {
+        parse("incrementing-gauge") shouldBe IncrementingGauge
+      }
+      "successfully parse a DecrementingGauge type" in {
+        parse("decrementing-gauge") shouldBe DecrementingGauge
+      }
+      "successfully parse a PunctualGauge type" in {
+        parse("punctual-gauge") shouldBe PunctualGauge
       }
     }
     "recording a generic metric value" should {
@@ -38,6 +47,18 @@ class SupportedKamonMetricTypesSpec extends WordSpec {
       "support a Histogram type" in new MetricRecordingFixture {
         Histogram.recordValue(histogramMetricMock, 20L)
         verify(histogramMetricMock).record(20L)
+      }
+      "support an IncrementingGauge type" in new MetricRecordingFixture {
+        IncrementingGauge.recordValue(gaugeMetricMock, 20L)
+        verify(gaugeMetricMock).increment(20L)
+      }
+      "support a DecrementingGauge type" in new MetricRecordingFixture {
+        DecrementingGauge.recordValue(gaugeMetricMock, 20L)
+        verify(gaugeMetricMock).decrement(20L)
+      }
+      "support a PunctualGauge type" in new MetricRecordingFixture {
+        PunctualGauge.recordValue(gaugeMetricMock, 20L)
+        verify(gaugeMetricMock).set(20L)
       }
     }
   }
@@ -59,5 +80,6 @@ class SupportedKamonMetricTypesSpec extends WordSpec {
   trait MetricRecordingFixture extends MockitoSugar {
     val counterMetricMock = mock[CounterMetric]
     val histogramMetricMock = mock[HistogramMetric]
+    val gaugeMetricMock = mock[GaugeMetric]
   }
 }
