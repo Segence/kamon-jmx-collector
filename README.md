@@ -15,11 +15,11 @@ Usage
 2. Import the artifact, [click here](https://bintray.com/segence/maven-oss-releases/jmx-collector) for instructions.
     - SBT example:
     ```$scala
-    libraryDependencies += "io.kamon" %% "kamon-jmx-collector" % "0.1.2"
+    libraryDependencies += "io.kamon" %% "kamon-jmx-collector" % "0.1.3"
     ```
     - Gradle example:
     ```$groovy
-    compile 'io.kamon:kamon-jmx-collector_2.12:0.1.2'
+    compile 'io.kamon:kamon-jmx-collector_2.12:0.1.3'
     ```
 3. The artifact does not include all dependencies to avoid versioning conflict within your application.
    The required libraries have to be added.
@@ -56,6 +56,13 @@ Usage
               { "name": "HeapMemoryUsage",                "type": "histogram", "keys": [ "committed", "max" ] },
               { "name": "ObjectPendingFinalizationCount", "type": "histogram", "keys": [ ]  }
             ]
+          },
+          {
+            "metric-name": "kafka-consumer",
+            "jmxQuery": "kafka.consumer:type=consumer-metrics,client-id=*",
+            "attributes": [
+              { "name": "connection-count", "type": "histogram", "keys": [ ]  }
+            ]
           }
         ],
         initial-delay = 1 second,
@@ -88,6 +95,8 @@ The following table explains the different configuration parameters and how to s
 
 As JMX metrics are generated in runtime it is advised to set the `kamon.jmx-collector.initial-delay` parameter to a sensible value, depending on how long it takes for the application to initialise JMX metrics.
 Failing to define `kamon.jmx-collector.mbeans[*].attributes[*].keys` for a [`CompositeData`](https://docs.oracle.com/javase/8/docs/api/javax/management/openmbean/CompositeData.html) attribute will make it impossible to retrieve metrics.
+
+The actual Kamon metric names are generated in the following format: `jmx-${metric-name from configuration}-${any matching parts from wildcard query}-${attribute names}`
 
 ### Finding the available JMX queries and attributes
 

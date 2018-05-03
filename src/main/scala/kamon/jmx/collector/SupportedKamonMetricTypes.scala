@@ -1,31 +1,31 @@
 package kamon.jmx.collector
 
 import kamon.Kamon
-import kamon.metric._
+import kamon.metric.{CounterMetric, HistogramMetric, Metric}
 
 private[collector] object SupportedKamonMetricTypes {
 
-  case class SupportedKamonMetric[T](metricInstrument: Metric[T]) {
-    def record(value: Long): Unit = metricInstrument match {
-      case counter: CounterMetric => counter.increment(value)
-      case histogram: HistogramMetric => histogram.record(value)
-      case _ =>
-    }
-  }
+  trait SupportedKamonMetricType {
+    type T <: Metric[_]
+    def getMetricInstrument(metricName: String): T
+    def recordValue(metricInstrument: T, value: Long): Unit
 
-  sealed trait SupportedKamonMetricType {
-    type T
-    def registerMetric(metricName: String): Metric[T]
+    def record(metricName: String, value: Long): Unit = recordValue(
+      getMetricInstrument(metricName),
+      value
+    )
   }
 
   case object Counter extends SupportedKamonMetricType {
-    override type T = Counter
-    override def registerMetric(metricName: String): Metric[T] = Kamon.counter(metricName)
+    override type T = CounterMetric
+    override def getMetricInstrument(metricName: String): CounterMetric = Kamon.counter(metricName)
+    override def recordValue(metricInstrument: CounterMetric, value: Long): Unit = metricInstrument.increment(value)
   }
 
   case object Histogram extends SupportedKamonMetricType {
-    override type T = Histogram
-    override def registerMetric(metricName: String): Metric[T] = Kamon.histogram(metricName)
+    override type T = HistogramMetric
+    override def getMetricInstrument(metricName: String): HistogramMetric = Kamon.histogram(metricName)
+    override def recordValue(metricInstrument: HistogramMetric, value: Long): Unit = metricInstrument.record(value)
   }
 
   def parse: PartialFunction[String, SupportedKamonMetricType] = {
