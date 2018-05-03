@@ -2,11 +2,9 @@ package kamon.jmx.collector
 
 import akka.actor.{Actor, ActorLogging}
 import kamon.jmx.collector.JmxMetricCollectorActor.{CollectMetrics, MetricsCollectionFinished}
-import kamon.jmx.collector.SupportedKamonMetricTypes.{SupportedKamonMetric, SupportedKamonMetricType}
 
 // TODO add tests
-private[collector] class JmxMetricCollectorActor(metrics: List[(String, SupportedKamonMetric[_])],
-                                                 configuration: List[JmxMetricConfiguration]) extends Actor with ActorLogging {
+private[collector] class JmxMetricCollectorActor(configuration: List[JmxMetricConfiguration]) extends Actor with ActorLogging {
   import context.become
 
   override def receive: Receive = waiting
@@ -18,9 +16,8 @@ private[collector] class JmxMetricCollectorActor(metrics: List[(String, Supporte
       val (metricValues, errors) = MetricCollector.generateMetrics(configuration)
 
       for {
-        (metricName, metricValue) <- metricValues
-        ddd <- metrics.find(_._1 == metricName)
-      } yield ddd._2.record(metricValue)
+        (metricName, metricValue, metricType) <- metricValues
+      } yield metricType.record(metricName, metricValue)
 
       errors.foreach { error =>
         log.error(error, "Failed to retrieve JMX metrics")
