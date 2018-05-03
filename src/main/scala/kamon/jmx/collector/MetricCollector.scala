@@ -11,13 +11,13 @@ import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
-private[collector] case class FullMetricName(metricName: String, metricNameSuffix: Option[String] = None) {
-  override def toString: String = s"$metricName${metricNameSuffix.fold("") { suffix => s"-$suffix" }}"
-}
-
 private[collector] object MetricCollector {
 
-  private[collector] def getMetricName(jmxObjectName: ObjectName, queryMbeansAndMetricNames: Map[ObjectName, String]): Option[FullMetricName] =
+  case class FullMetricName(metricName: String, metricNameSuffix: Option[String] = None) {
+    override def toString: String = s"$metricName${metricNameSuffix.fold("") { suffix => s"-$suffix" }}"
+  }
+
+  def getMetricName(jmxObjectName: ObjectName, queryMbeansAndMetricNames: Map[ObjectName, String]): Option[FullMetricName] =
     queryMbeansAndMetricNames.get(jmxObjectName) match {
       case Some(validResult) =>
         Option(FullMetricName(validResult))
@@ -41,7 +41,7 @@ private[collector] object MetricCollector {
       }
     }
 
-  private[collector] def collectMetrics(configuration: List[JmxMetricConfiguration]): (List[(FullMetricName, String, Any, SupportedKamonMetricType)], List[Throwable]) = {
+  def collectMetrics(configuration: List[JmxMetricConfiguration]): (List[(FullMetricName, String, Any, SupportedKamonMetricType)], List[Throwable]) = {
 
     val (successfulConfigWithObjectNames, errorsConfigWithObjectNames) = configuration.map { metricConfig =>
       Try {
@@ -108,7 +108,7 @@ private[collector] object MetricCollector {
     Option(optional.orElseGet(null))
   }
 
-  private[collector] def generateMetricName(metricName: String, attributeName: String, attributeKeyName: Option[String] = None)=
+  def generateMetricName(metricName: String, attributeName: String, attributeKeyName: Option[String] = None)=
     s"jmx-$metricName-$attributeName${attributeKeyName.fold("")(keyName => s"-$keyName")}"
 
   private[collector] val extractAttributeValue: PartialFunction[Any, Try[Long]] = {
@@ -152,7 +152,7 @@ private[collector] object MetricCollector {
         }
     }
 
-  private[collector] def generateMetricDefinitions(configuration: List[JmxMetricConfiguration]): Map[String, SupportedKamonMetricType] = {
+  def generateMetricDefinitions(configuration: List[JmxMetricConfiguration]): Map[String, SupportedKamonMetricType] = {
     for {
       metricConfiguration <- configuration
       attribute <- metricConfiguration.attributes
@@ -164,14 +164,14 @@ private[collector] object MetricCollector {
     }
   }.flatten.toMap
 
-  private[collector] def generateMetricDefinitions2(configuration: List[(String, Long, SupportedKamonMetricType)]): Map[String, SupportedKamonMetricType] = {
+  def generateMetricDefinitions2(configuration: List[(String, Long, SupportedKamonMetricType)]): Map[String, SupportedKamonMetricType] = {
     for {
       metricConfiguration <- configuration
 
     } yield (metricConfiguration._1, metricConfiguration._3)
   }.toMap
 
-  private[collector] def generateMetrics(configuration: List[JmxMetricConfiguration]): (List[(String, Long, SupportedKamonMetricType)], List[Throwable]) = {
+  def generateMetrics(configuration: List[JmxMetricConfiguration]): (List[(String, Long, SupportedKamonMetricType)], List[Throwable]) = {
     val (results, errors) = collectMetrics(configuration)
 
     val resultsIncludingAttributeKeys = for {

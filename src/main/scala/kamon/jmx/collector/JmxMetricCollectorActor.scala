@@ -36,7 +36,7 @@ private[collector] class JmxMetricCollectorActor(configuration: List[JmxMetricCo
   }
 }
 
-object JmxMetricCollectorActor {
+private[collector] object JmxMetricCollectorActor {
   sealed trait Message
   case object CollectMetrics
   case object MetricsCollectionFinished

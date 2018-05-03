@@ -1,5 +1,6 @@
 package kamon.jmx.collector
 
+import kamon.jmx.collector.MetricCollector.FullMetricName
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers._
 
