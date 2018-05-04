@@ -1,27 +1,64 @@
 package kamon.jmx.collector
 
-import kamon.jmx.collector.MetricCollector.{collectMetrics, extractAttributeValue, generateMetricName, generateMetrics, generateMetricDefinitions}
+import com.segence.commons.jmx.collector.{JmxCollector, MBeanMetricResult}
+import javax.management.ObjectName
+import kamon.jmx.collector.MetricCollector._
 import kamon.jmx.collector.SupportedKamonMetricTypes.{Counter, Histogram}
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import org.scalatest.mockito.MockitoSugar
+import java.{util => javautil}
+import org.mockito.Mockito.when
+import org.mockito.Matchers.any
+import scala.collection.JavaConverters._
 
 import scala.util.Success
 
 class MetricCollectorSpec extends WordSpec {
   "A metric collector" when {
+    "getting a metric name" should {
+      "return the metric name that exactly matches an object name" in new MetricNameFixture {
+        getMetricName(TestObjectName, ObjectNamesWithoutWildcard) shouldBe Some(FullMetricName("kafka-consumer-metric"))
+      }
+      "return the metric name that matches an object name having wildcard in the end of the query" in new MetricNameFixture {
+        getMetricName(TestObjectName, ObjectNamesWithWildcardInTheEndOfQuery) shouldBe Some(FullMetricName("kafka-consumer-metric", Some("consumer-1")))
+      }
+      "return the metric name that matches an object name having wildcard in between the query" in new MetricNameFixture {
+        getMetricName(TestObjectName, ObjectNamesWithWildcardInBetweenTheQuery) shouldBe Some(FullMetricName("kafka-consumer-metric", Some("consumer-1-consumer-metrics")))
+      }
+    }
     "collecting JMX metrics" should {
-      "retrieve all available JMX metrics and provide the results with metric names" in new Fixture {
-        val (results, errors) = collectMetrics(configWithValidMBeansAndAttributes)
+      "retrieve all available JMX metrics and provide the results with metric names" in new JmxMetricConfigurationFixture {
+        val (results, errors) = collectMetrics(
+          expectedJmxMbeansAndAttributes,
+          expectedJmxMbeansAndMetricNames,
+          expectedConfigWithObjectNames,
+          Nil,
+          JmxCollector.queryAsSet
+        )
 
         results.length shouldBe 3
 
-        results.map(_._1).toSet shouldBe Set("os-mbean", "os-mbean", "memory-mbean")
+        results.map(_._1).toSet shouldBe Set(FullMetricName("os-mbean"), FullMetricName("memory-mbean"))
         results.map(_._2).toSet shouldBe Set("AvailableProcessors", "Arch", "HeapMemoryUsage")
 
         errors shouldBe empty
       }
-      "report any errors in JMX queries" in new Fixture {
-        val (results, errors) = collectMetrics(configWithInvalidJmxQuery)
+      "report any errors in JMX queries" in new JmxMetricConfigurationFixture with JmxQueryFunctionalityFixture {
+
+        val jmxQueryRsult = Set(
+          new MBeanMetricResult(new RuntimeException("Something's gone wrong..."))
+        )
+
+        when(queryJmxBeansFnMock.apply(any[javautil.Map[ObjectName, javautil.Set[String]]])).thenReturn(jmxQueryRsult.asJava)
+
+        val (results, errors) = collectMetrics(
+          invalidJmxMbeansAndAttributes,
+          expectedJmxMbeansAndMetricNames,
+          expectedConfigWithObjectNames,
+          Nil,
+          queryJmxBeansFnMock
+        )
 
         results shouldBe empty
         errors.length shouldBe 1
@@ -49,23 +86,51 @@ class MetricCollectorSpec extends WordSpec {
         extractAttributeValue("10").isFailure shouldBe true
       }
     }
+    "getting JMX bean entities" should {
+      "return errors in MBean names" in new JmxMetricConfigurationFixture {
+
+        val (jmxMbeansAndAttributes, jmxMbeansAndMetricNames, configWithObjectNames, errorsFromConfigWithObjectNames) =
+          getJmxMbeanEntities(configWithInvalidJmxQuery)
+
+        jmxMbeansAndAttributes shouldBe Map.empty
+        jmxMbeansAndMetricNames shouldBe Map.empty
+        configWithObjectNames shouldBe Nil
+        errorsFromConfigWithObjectNames should have size 1
+      }
+      "successfully return all beans and attributes" in new JmxMetricConfigurationFixture {
+
+        val (jmxMbeansAndAttributes, jmxMbeansAndMetricNames, configWithObjectNames, errorsFromConfigWithObjectNames) =
+          getJmxMbeanEntities(configWithValidMBeansAndAttributes)
+
+        jmxMbeansAndAttributes shouldBe expectedJmxMbeansAndAttributes
+        jmxMbeansAndMetricNames shouldBe expectedJmxMbeansAndMetricNames
+        configWithObjectNames shouldBe expectedConfigWithObjectNames
+        errorsFromConfigWithObjectNames shouldBe Nil
+      }
+    }
     "generating metrics" should {
-      "generate all valid metrics" in new Fixture {
+      "generate all valid metrics" in new JmxMetricConfigurationFixture {
         val numberOfCPUs = Runtime.getRuntime.availableProcessors.toLong
 
-        val (results, errors) = generateMetrics(configWithValidMBeansAndAttributes)
+        val (results, errors) = generateMetrics(
+          configWithValidMBeansAndAttributes,
+          expectedJmxMbeansAndAttributes,
+          expectedJmxMbeansAndMetricNames,
+          expectedConfigWithObjectNames,
+          Nil
+        )
 
         results.size shouldBe 3
 
-        results.get("jmx-os-mbean-AvailableProcessors") shouldBe Some(numberOfCPUs)
-        results.get("jmx-memory-mbean-HeapMemoryUsage-committed").nonEmpty shouldBe true
-        results.get("jmx-memory-mbean-HeapMemoryUsage-max").nonEmpty shouldBe true
+        results.find(_._1 == "jmx-os-mbean-AvailableProcessors") shouldBe Some(("jmx-os-mbean-AvailableProcessors", numberOfCPUs, Counter))
+        results.find(_._1 == "jmx-memory-mbean-HeapMemoryUsage-committed").nonEmpty shouldBe true
+        results.find(_._1 == "jmx-memory-mbean-HeapMemoryUsage-max").nonEmpty shouldBe true
 
         errors.length shouldBe 1
       }
     }
     "generating metric definitions" should {
-      "generate all valid metric definitions" in new Fixture {
+      "generate all valid metric definitions" in new JmxMetricConfigurationFixture {
         val results = generateMetricDefinitions(configWithValidMBeansAndAttributes)
 
         results shouldBe Map(
@@ -79,12 +144,46 @@ class MetricCollectorSpec extends WordSpec {
     }
   }
 
-  trait Fixture {
+  trait MetricNameFixture {
+    val TestObjectName = new ObjectName("kafka.consumer:type=consumer-metrics,client-id=consumer-1")
+    val TestObjectNameWithWildcardInTheEndOfQuery = new ObjectName("kafka.consumer:type=consumer-metrics,client-id=*")
+    val TestObjectNameWithWildcardInBetweenTheQuery = new ObjectName("kafka.consumer:type=*,client-id=*")
+    val TestMetricName = "kafka-consumer-metric"
+
+    val OtherTestObjectName = new ObjectName("other-some-object-name", "key", "value")
+    val OtherTestMetricName = "other-some-metric-name"
+
+    val ObjectNamesWithoutWildcard = Map(
+      TestObjectName -> TestMetricName,
+      OtherTestObjectName -> OtherTestMetricName
+    )
+
+    val ObjectNamesWithWildcardInTheEndOfQuery = Map(
+      TestObjectNameWithWildcardInTheEndOfQuery -> TestMetricName,
+      OtherTestObjectName -> OtherTestMetricName
+    )
+
+    val ObjectNamesWithWildcardInBetweenTheQuery = Map(
+      TestObjectNameWithWildcardInBetweenTheQuery -> TestMetricName,
+      OtherTestObjectName -> OtherTestMetricName
+    )
+  }
+
+  trait JmxQueryFunctionalityFixture extends MockitoSugar {
+    val queryJmxBeansFnMock = mock[(javautil.Map[ObjectName, javautil.Set[String]] => javautil.Set[MBeanMetricResult])]
+  }
+
+  trait JmxMetricConfigurationFixture {
 
     val configWithInvalidJmxQuery =
       JmxMetricConfiguration("os-mbean", "invalid-query",
         JmxMetricAttribute("AvailableProcessors", Counter) :: JmxMetricAttribute("Arch", Histogram) :: Nil
       ) :: Nil
+
+    val invalidJmxMbeansAndAttributes = Map(
+      new ObjectName("java.lang:type=OperatingSystem") -> Set("invalid-attribute"),
+      new ObjectName("java.lang:type=Memory") -> Set("HeapMemoryUsage", "gc")
+    )
 
     val configWithValidMBeansAndAttributes =
       JmxMetricConfiguration("os-mbean", "java.lang:type=OperatingSystem",
@@ -97,5 +196,27 @@ class MetricCollectorSpec extends WordSpec {
                              JmxMetricAttribute("gc", Histogram) ::
                              Nil
       ) :: Nil
+
+
+    val expectedJmxMbeansAndAttributes = Map(
+      new ObjectName("java.lang:type=OperatingSystem") -> Set("AvailableProcessors", "Arch"),
+      new ObjectName("java.lang:type=Memory") -> Set("HeapMemoryUsage", "gc")
+    )
+
+    val expectedJmxMbeansAndMetricNames = Map(
+      new ObjectName("java.lang:type=OperatingSystem") -> "os-mbean",
+      new ObjectName("java.lang:type=Memory") -> "memory-mbean"
+    )
+
+    val expectedConfigWithObjectNames = List(
+      ( "os-mbean",
+        new ObjectName("java.lang:type=OperatingSystem"),
+        List(JmxMetricAttribute("AvailableProcessors", Counter, Nil), JmxMetricAttribute("Arch", Histogram, Nil))
+      ),
+      ( "memory-mbean",
+        new ObjectName("java.lang:type=Memory"),
+        List(JmxMetricAttribute("HeapMemoryUsage", Counter, List("committed", "max")), JmxMetricAttribute("gc", Histogram, Nil))
+      )
+    )
   }
 }

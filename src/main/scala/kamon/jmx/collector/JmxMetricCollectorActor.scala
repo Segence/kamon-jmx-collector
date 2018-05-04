@@ -1,45 +1,52 @@
 package kamon.jmx.collector
 
 import akka.actor.{Actor, ActorLogging}
+import javax.management.ObjectName
 import kamon.jmx.collector.JmxMetricCollectorActor.{CollectMetrics, MetricsCollectionFinished}
-import kamon.jmx.collector.SupportedKamonMetricTypes.{SupportedKamonMetric, SupportedKamonMetricType}
 
 // TODO add tests
-private[collector] class JmxMetricCollectorActor(metrics: List[(String, SupportedKamonMetric[_])],
-                                                 configuration: List[JmxMetricConfiguration]) extends Actor with ActorLogging {
-  import context.become
+private[collector] class JmxMetricCollectorActor(
+    configuration: List[JmxMetricConfiguration],
+    jmxMbeansAndAttributes: Map[ObjectName, Set[String]],
+    jmxMbeansAndMetricNames: Map[ObjectName, String],
+    configWithObjectNames: List[(String, ObjectName, List[JmxMetricAttribute])],
+    errorsFromConfigWithObjectNames: List[Throwable]
+  ) extends Actor with ActorLogging {
 
-  override def receive: Receive = waiting
+    import context.become
 
-  private def waiting: Receive = {
-    case CollectMetrics =>
-      become(busy)
-      log.debug(s"Received CollectMetrics")
-      val (metricValues, errors) = MetricCollector.generateMetrics(configuration)
+    override def receive: Receive = waiting
 
-      for {
-        (metricName, metricValue) <- metricValues
-        ddd <- metrics.find(_._1 == metricName)
-      } yield ddd._2.record(metricValue)
+    private def waiting: Receive = {
+      case CollectMetrics =>
+        become(busy)
+        log.debug(s"Received CollectMetrics")
+        val (metricValues, errors) = MetricCollector.generateMetrics(configuration, jmxMbeansAndAttributes,
+                                                                     jmxMbeansAndMetricNames, configWithObjectNames,
+                                                                     errorsFromConfigWithObjectNames)
 
-      errors.foreach { error =>
-        log.error(error, "Failed to retrieve JMX metrics")
-      }
+        for {
+          (metricName, metricValue, metricType) <- metricValues
+        } yield metricType.record(metricName, metricValue)
 
-      self ! MetricsCollectionFinished
-    case _ =>
-  }
+        errors.foreach { error =>
+          log.error(error, "Failed to retrieve JMX metrics")
+        }
 
-  private def busy: Receive = {
-    case CollectMetrics =>
-      log.debug("Previous JMX log collection is still in progress, skipping...")
-    case MetricsCollectionFinished =>
-      log.debug("Metrics collection finished, becoming available...")
-      become(waiting)
-  }
+        self ! MetricsCollectionFinished
+      case _ =>
+    }
+
+    private def busy: Receive = {
+      case CollectMetrics =>
+        log.debug("Previous JMX log collection is still in progress, skipping...")
+      case MetricsCollectionFinished =>
+        log.debug("Metrics collection finished, becoming available...")
+        become(waiting)
+    }
 }
 
-object JmxMetricCollectorActor {
+private[collector] object JmxMetricCollectorActor {
   sealed trait Message
   case object CollectMetrics
   case object MetricsCollectionFinished
