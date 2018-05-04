@@ -15,7 +15,13 @@ object KamonJmxMetricCollector extends Configuration {
 
     val metricConfiguration = parseConfiguration(configuration)
 
-    lazy val jmxMetricCollectorActor = system.actorOf(Props(new JmxMetricCollectorActor(metricConfiguration.metrics)))
+    val (jmxMbeansAndAttributes, jmxMbeansAndMetricNames, configWithObjectNames, errorsFromConfigWithObjectNames) =
+      MetricCollector.getJmxMbeanEntities(metricConfiguration.metrics)
+
+    val jmxMetricCollectorActor = system.actorOf(Props(new JmxMetricCollectorActor(
+      metricConfiguration.metrics, jmxMbeansAndAttributes, jmxMbeansAndMetricNames, configWithObjectNames, errorsFromConfigWithObjectNames)
+    ))
+
     system.scheduler.schedule(metricConfiguration.initialDelay, metricConfiguration.checkInterval, jmxMetricCollectorActor, CollectMetrics)
   }
 }

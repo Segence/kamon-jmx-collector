@@ -1,8 +1,8 @@
 package kamon.jmx.collector
 
-import java.util.Optional
+import java.{util => javautil}
 
-import com.segence.commons.jmx.collector.JmxCollector
+import com.segence.commons.jmx.collector.{JmxCollector, MBeanMetricResult}
 import javax.management.ObjectName
 import javax.management.openmbean.CompositeData
 import kamon.jmx.collector.SupportedKamonMetricTypes.SupportedKamonMetricType
@@ -15,6 +15,33 @@ private[collector] object MetricCollector {
 
   case class FullMetricName(metricName: String, metricNameSuffix: Option[String] = None) {
     override def toString: String = s"$metricName${metricNameSuffix.fold("") { suffix => s"-$suffix" }}"
+  }
+
+  def getJmxMbeanEntities(configuration: List[JmxMetricConfiguration]):
+    (Map[ObjectName, Set[String]], Map[ObjectName, String], List[(String, ObjectName, List[JmxMetricAttribute])], List[Throwable]) = {
+
+    val (successfulConfigWithObjectNames, errorsConfigWithObjectNames) = configuration.map { metricConfig =>
+      Try {
+        val jmxObjectName = new ObjectName(metricConfig.jmxMbeanQuery)
+        (metricConfig.metricName, jmxObjectName, metricConfig.attributes)
+      }
+    }.partition(_.isSuccess)
+
+    val configWithObjectNames = successfulConfigWithObjectNames.flatMap {
+      case Success(configWithObjectName) => Some(configWithObjectName)
+      case _ => None
+    }
+
+    val (jmxMbeansAndAttributes, jmxMbeansAndMetricNames) = configWithObjectNames.map { case (metricName, jmxObjectName, attributes) =>
+      (jmxObjectName -> attributes.map(_.attributeName).toSet, jmxObjectName -> metricName)
+    }.unzip
+
+    val errorsFromConfigWithObjectNames = errorsConfigWithObjectNames.flatMap {
+      case Failure(error) => Some(error)
+      case _ => None
+    }
+
+    (jmxMbeansAndAttributes.toMap, jmxMbeansAndMetricNames.toMap, configWithObjectNames, errorsFromConfigWithObjectNames)
   }
 
   def getMetricName(jmxObjectName: ObjectName, queryMbeansAndMetricNames: Map[ObjectName, String]): Option[FullMetricName] =
@@ -41,54 +68,41 @@ private[collector] object MetricCollector {
       }
     }
 
-  def collectMetrics(configuration: List[JmxMetricConfiguration]): (List[(FullMetricName, String, Any, SupportedKamonMetricType)], List[Throwable]) = {
+  def collectMetrics(jmxMbeansAndAttributes: Map[ObjectName, Set[String]],
+                     jmxMbeansAndMetricNames: Map[ObjectName, String],
+                     configWithObjectNames: List[(String, ObjectName, List[JmxMetricAttribute])],
+                     errorsFromConfigWithObjectNames: List[Throwable],
+                     queryJmxBeansFn: (javautil.Map[ObjectName, javautil.Set[String]] => javautil.Set[MBeanMetricResult])
+                    ): (List[(FullMetricName, String, Any, SupportedKamonMetricType)], List[Throwable]) = {
 
-    val (successfulConfigWithObjectNames, errorsConfigWithObjectNames) = configuration.map { metricConfig =>
-      Try {
-        val jmxObjectName = new ObjectName(metricConfig.jmxMbeanQuery)
-        (metricConfig.metricName, jmxObjectName, metricConfig.attributes)
-      }
-    }.partition(_.isSuccess)
+    val metricNamesAndValues =
+      queryJmxBeansFn(jmxMbeansAndAttributes.map { case (objectName, attributes) =>
+        objectName -> attributes.asJava
+      }.asJava).asScala.toList.map { mbeanMetricResult =>
+        val maybeMBeanMetric = asScalaOption(mbeanMetricResult.getMBeanMetric)
+        val maybeError = asScalaOption(mbeanMetricResult.getError)
 
-    val configWithObjectNames = successfulConfigWithObjectNames.flatMap {
-      case Success(configWithObjectName) => Some(configWithObjectName)
-      case _ => None
-    }
-
-    val (jmxMbeansAndAttributes, jmxMbeansAndMetricNames) = configWithObjectNames.map { case (metricName, jmxObjectName, attributes) =>
-      (jmxObjectName -> attributes.map(_.attributeName).toSet.asJava, jmxObjectName -> metricName)
-    }.unzip
-
-    val jmxMbeansAndMetricNamesMap = jmxMbeansAndMetricNames.toMap
-
-    val metricNamesAndValues = JmxCollector.queryAsSet(jmxMbeansAndAttributes.toMap.asJava).asScala.toList.map { mbeanMetricResult =>
-      val maybeMBeanMetric = asScalaOption(mbeanMetricResult.getMBeanMetric)
-      val maybeError = asScalaOption(mbeanMetricResult.getError)
-
-      (maybeMBeanMetric, maybeError) match {
-        case (Some(validMbeanMetric), None) =>
-          Try {
-            for {
-              (metricName, _, attributes) <- configWithObjectNames
-              attributeConfig <- attributes
-              attribute <- validMbeanMetric.getAttributes.asScala.toList
-              resolvedMetricName <- getMetricName(validMbeanMetric.getObjectInstance.getObjectName, jmxMbeansAndMetricNamesMap)
-              if resolvedMetricName.metricName == metricName && attributeConfig.attributeName == attribute.getName
-            } yield (resolvedMetricName, attribute.getName, attribute.getValue, attributeConfig.metricType)
-          }
-        case (_, Some(error)) =>
-          Failure(error)
-        case _ =>
-          Failure(new RuntimeException("Invalid state: both MBean Metric and error defined"))
-      }
+        (maybeMBeanMetric, maybeError) match {
+          case (Some(validMbeanMetric), None) =>
+            Try {
+              for {
+                (metricName, _, attributes) <- configWithObjectNames
+                attributeConfig <- attributes
+                attribute <- validMbeanMetric.getAttributes.asScala.toList
+                resolvedMetricName <- getMetricName(validMbeanMetric.getObjectInstance.getObjectName, jmxMbeansAndMetricNames)
+                if resolvedMetricName.metricName == metricName && attributeConfig.attributeName == attribute.getName
+              } yield (resolvedMetricName, attribute.getName, attribute.getValue, attributeConfig.metricType)
+            }
+          case (_, Some(error)) =>
+            Failure(error)
+          case _ =>
+            Failure(new RuntimeException("Invalid state: both MBean Metric and error defined"))
+        }
     }
 
     val (successfulMetricNamesAndValues, errorsMetricNamesAndValues) = metricNamesAndValues.partition(_.isSuccess)
 
-    val errorsFromConfigWithObjectNames = errorsConfigWithObjectNames.flatMap {
-      case Failure(error) => Some(error)
-      case _ => None
-    }
+
     val errorsFromMetricNamesAndValues = errorsMetricNamesAndValues.flatMap {
       case Failure(error) => Some(error)
       case _ => None
@@ -102,7 +116,7 @@ private[collector] object MetricCollector {
     (validMetrics, errorsFromConfigWithObjectNames ++ errorsFromMetricNamesAndValues)
   }
 
-  private def asScalaOption[T](optional: Optional[T]) = if (!optional.isPresent) {
+  private def asScalaOption[T](optional: javautil.Optional[T]): Option[T] = if (!optional.isPresent) {
     None
   } else {
     Option(optional.orElseGet(null))
@@ -122,7 +136,7 @@ private[collector] object MetricCollector {
     metrics match {
       case Nil =>
         results
-      case (metricName, attributeName, attributeKeys, rawAttributeValue: CompositeData, metricType) :: rest =>
+      case (metricName, attributeName, attributeKeys, rawAttributeValue: CompositeData, metricType) :: _ =>
 
         val attributeKeyMetrics = attributeKeys.map { attributeKey =>
           (attributeKey, extractAttributeValue(rawAttributeValue.get(attributeKey)), metricType)
@@ -142,7 +156,7 @@ private[collector] object MetricCollector {
           )
         )
 
-      case (metricName, attributeName, _, rawAttributeValue, metricType) :: rest =>
+      case (metricName, attributeName, _, rawAttributeValue, metricType) :: _ =>
         extractAttributeValue(rawAttributeValue) match {
           case Success(validAttributeValue) =>
             val fullMetricName = generateMetricName(metricName, attributeName)
@@ -164,15 +178,13 @@ private[collector] object MetricCollector {
     }
   }.flatten.toMap
 
-  def generateMetricDefinitions2(configuration: List[(String, Long, SupportedKamonMetricType)]): Map[String, SupportedKamonMetricType] = {
-    for {
-      metricConfiguration <- configuration
-
-    } yield (metricConfiguration._1, metricConfiguration._3)
-  }.toMap
-
-  def generateMetrics(configuration: List[JmxMetricConfiguration]): (List[(String, Long, SupportedKamonMetricType)], List[Throwable]) = {
-    val (results, errors) = collectMetrics(configuration)
+  def generateMetrics(configuration: List[JmxMetricConfiguration],
+                      jmxMbeansAndAttributes: Map[ObjectName, Set[String]],
+                      jmxMbeansAndMetricNames: Map[ObjectName, String],
+                      configWithObjectNames: List[(String, ObjectName, List[JmxMetricAttribute])],
+                      errorsFromConfigWithObjectNames: List[Throwable]): (List[(String, Long, SupportedKamonMetricType)], List[Throwable]) = {
+    val (results, errors) =
+      collectMetrics(jmxMbeansAndAttributes, jmxMbeansAndMetricNames, configWithObjectNames, errorsFromConfigWithObjectNames, JmxCollector.queryAsSet)
 
     val resultsIncludingAttributeKeys = for {
       (metricName, attributeName, attributeValue, metricType) <- results
