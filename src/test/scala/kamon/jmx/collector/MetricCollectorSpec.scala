@@ -18,13 +18,16 @@ class MetricCollectorSpec extends WordSpec {
   "A metric collector" when {
     "getting a metric name" should {
       "return the metric name that exactly matches an object name" in new MetricNameFixture {
-        getMetricName(TestObjectName, ObjectNamesWithoutWildcard) shouldBe Some(FullMetricName("kafka-consumer-metric"))
+        getMetricName(KafkaConsumerObjectName, ObjectNamesWithoutWildcard) shouldBe Some(FullMetricName("kafka-consumer-metric"))
       }
       "return the metric name that matches an object name having wildcard in the end of the query" in new MetricNameFixture {
-        getMetricName(TestObjectName, ObjectNamesWithWildcardInTheEndOfQuery) shouldBe Some(FullMetricName("kafka-consumer-metric", Some("consumer-1")))
+        getMetricName(KafkaConsumerObjectName, ObjectNamesWithWildcardInTheEndOfQuery) shouldBe Some(FullMetricName("kafka-consumer-metric", Some("consumer-1")))
       }
       "return the metric name that matches an object name having wildcard in between the query" in new MetricNameFixture {
-        getMetricName(TestObjectName, ObjectNamesWithWildcardInBetweenTheQuery) shouldBe Some(FullMetricName("kafka-consumer-metric", Some("consumer-1-consumer-metrics")))
+        getMetricName(KafkaConsumerObjectName, ObjectNamesWithWildcardInBetweenTheQuery) shouldBe Some(FullMetricName("kafka-consumer-metric", Some("consumer-1-consumer-metrics")))
+      }
+      "return valid metric name when multiple values are wildcards" in new MetricNameFixture {
+        getMetricName(KafkaProducerObjectName, ObjectNamesWithWildcardInValues) shouldBe Some(FullMetricName("kafka-producer2", Some("node-1-producer-1")))
       }
     }
     "collecting JMX metrics" should {
@@ -110,7 +113,7 @@ class MetricCollectorSpec extends WordSpec {
     }
     "generating metrics" should {
       "generate all valid metrics" in new JmxMetricConfigurationFixture {
-        val numberOfCPUs = Runtime.getRuntime.availableProcessors.toLong
+        private val numberOfCPUs = Runtime.getRuntime.availableProcessors.toLong
 
         val (results, errors) = generateMetrics(
           configWithValidMBeansAndAttributes,
@@ -123,15 +126,15 @@ class MetricCollectorSpec extends WordSpec {
         results.size shouldBe 3
 
         results.find(_._1 == "jmx-os-mbean-AvailableProcessors") shouldBe Some(("jmx-os-mbean-AvailableProcessors", numberOfCPUs, Counter))
-        results.find(_._1 == "jmx-memory-mbean-HeapMemoryUsage-committed").nonEmpty shouldBe true
-        results.find(_._1 == "jmx-memory-mbean-HeapMemoryUsage-max").nonEmpty shouldBe true
+        results.exists(_._1 == "jmx-memory-mbean-HeapMemoryUsage-committed") shouldBe true
+        results.exists(_._1 == "jmx-memory-mbean-HeapMemoryUsage-max") shouldBe true
 
         errors.length shouldBe 1
       }
     }
     "generating metric definitions" should {
       "generate all valid metric definitions" in new JmxMetricConfigurationFixture {
-        val results = generateMetricDefinitions(configWithValidMBeansAndAttributes)
+        private val results = generateMetricDefinitions(configWithValidMBeansAndAttributes)
 
         results shouldBe Map(
           "jmx-os-mbean-AvailableProcessors" -> Counter,
@@ -145,47 +148,56 @@ class MetricCollectorSpec extends WordSpec {
   }
 
   trait MetricNameFixture {
-    val TestObjectName = new ObjectName("kafka.consumer:type=consumer-metrics,client-id=consumer-1")
+    val KafkaConsumerObjectName = new ObjectName("kafka.consumer:type=consumer-metrics,client-id=consumer-1")
+    val KafkaProducerObjectName = new ObjectName("kafka.producer:type=producer-node-metrics,client-id=producer-1,node-id=node-1")
     val TestObjectNameWithWildcardInTheEndOfQuery = new ObjectName("kafka.consumer:type=consumer-metrics,client-id=*")
     val TestObjectNameWithWildcardInBetweenTheQuery = new ObjectName("kafka.consumer:type=*,client-id=*")
-    val TestMetricName = "kafka-consumer-metric"
+    val KafkaConsumerMetricName = "kafka-consumer-metric"
+    val KafkaProducerMetricName = "kafka-producer-metric"
 
-    val OtherTestObjectName = new ObjectName("other-some-object-name", "key", "value")
+    val SimpleTestObjectName = new ObjectName("other-some-object-name", "key", "value")
     val OtherTestMetricName = "other-some-metric-name"
 
     val ObjectNamesWithoutWildcard = Map(
-      TestObjectName -> TestMetricName,
-      OtherTestObjectName -> OtherTestMetricName
+      KafkaConsumerObjectName -> KafkaConsumerMetricName,
+      SimpleTestObjectName -> OtherTestMetricName
     )
 
     val ObjectNamesWithWildcardInTheEndOfQuery = Map(
-      TestObjectNameWithWildcardInTheEndOfQuery -> TestMetricName,
-      OtherTestObjectName -> OtherTestMetricName
+      TestObjectNameWithWildcardInTheEndOfQuery -> KafkaConsumerMetricName,
+      SimpleTestObjectName -> OtherTestMetricName
     )
 
     val ObjectNamesWithWildcardInBetweenTheQuery = Map(
-      TestObjectNameWithWildcardInBetweenTheQuery -> TestMetricName,
-      OtherTestObjectName -> OtherTestMetricName
+      TestObjectNameWithWildcardInBetweenTheQuery -> KafkaConsumerMetricName,
+      SimpleTestObjectName -> OtherTestMetricName
+    )
+
+    val ObjectNamesWithWildcardInValues = Map(
+      new ObjectName("kafka.producer:type=producer-metrics,client-id=*") -> "kafka-producer1",
+      new ObjectName("kafka.producer:type=producer-node-metrics,client-id=*,node-id=*") -> "kafka-producer2",
+      SimpleTestObjectName -> OtherTestMetricName
     )
   }
 
   trait JmxQueryFunctionalityFixture extends MockitoSugar {
-    val queryJmxBeansFnMock = mock[(javautil.Map[ObjectName, javautil.Set[String]] => javautil.Set[MBeanMetricResult])]
+    protected val queryJmxBeansFnMock: javautil.Map[ObjectName, javautil.Set[String]] => javautil.Set[MBeanMetricResult] =
+      mock[(javautil.Map[ObjectName, javautil.Set[String]] => javautil.Set[MBeanMetricResult])]
   }
 
   trait JmxMetricConfigurationFixture {
 
-    val configWithInvalidJmxQuery =
+    protected val configWithInvalidJmxQuery: List[JmxMetricConfiguration] =
       JmxMetricConfiguration("os-mbean", "invalid-query",
         JmxMetricAttribute("AvailableProcessors", Counter) :: JmxMetricAttribute("Arch", Histogram) :: Nil
       ) :: Nil
 
-    val invalidJmxMbeansAndAttributes = Map(
+    protected val invalidJmxMbeansAndAttributes = Map(
       new ObjectName("java.lang:type=OperatingSystem") -> Set("invalid-attribute"),
       new ObjectName("java.lang:type=Memory") -> Set("HeapMemoryUsage", "gc")
     )
 
-    val configWithValidMBeansAndAttributes =
+    protected val configWithValidMBeansAndAttributes: List[JmxMetricConfiguration] =
       JmxMetricConfiguration("os-mbean", "java.lang:type=OperatingSystem",
                              JmxMetricAttribute("AvailableProcessors", Counter) ::
                              JmxMetricAttribute("Arch", Histogram) ::
@@ -198,17 +210,17 @@ class MetricCollectorSpec extends WordSpec {
       ) :: Nil
 
 
-    val expectedJmxMbeansAndAttributes = Map(
+    protected val expectedJmxMbeansAndAttributes = Map(
       new ObjectName("java.lang:type=OperatingSystem") -> Set("AvailableProcessors", "Arch"),
       new ObjectName("java.lang:type=Memory") -> Set("HeapMemoryUsage", "gc")
     )
 
-    val expectedJmxMbeansAndMetricNames = Map(
+    protected val expectedJmxMbeansAndMetricNames = Map(
       new ObjectName("java.lang:type=OperatingSystem") -> "os-mbean",
       new ObjectName("java.lang:type=Memory") -> "memory-mbean"
     )
 
-    val expectedConfigWithObjectNames = List(
+    protected val expectedConfigWithObjectNames = List(
       ( "os-mbean",
         new ObjectName("java.lang:type=OperatingSystem"),
         List(JmxMetricAttribute("AvailableProcessors", Counter, Nil), JmxMetricAttribute("Arch", Histogram, Nil))
