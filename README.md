@@ -63,6 +63,22 @@ Usage
             "attributes": [
               { "name": "connection-count", "type": "histogram", "keys": [ ]  }
             ]
+          },
+          {
+            "metric-name": "kafka-producer-metrics",
+            "jmxQuery": "kafka.producer:type=producer-metrics,client-id=*",
+            "attributes": [
+              { "name": "network-io-rate",    "type": "punctual-gauge", "keys": [ ]  },
+              { "name": "outgoing-byte-rate", "type": "punctual-gauge", "keys": [ ]  }
+            ]
+          },
+          {
+            "metric-name": "kafka-producer-node-metrics",
+            "jmxQuery": "kafka.producer:type=producer-node-metrics,client-id=*,node-id=*",
+            "attributes": [
+              { "name": "incoming-byte-rate", "type": "punctual-gauge", "keys": [ ]  },
+              { "name": "outgoing-byte-rate", "type": "punctual-gauge", "keys": [ ]  }
+            ]
           }
         ],
         initial-delay = 1 second,
