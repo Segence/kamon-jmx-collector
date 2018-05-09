@@ -20,8 +20,8 @@ class ConfigurationSpec extends FlatSpec {
       ) :: Nil
     )
 
-    val testConfigURL = getClass.getResource("/config1.conf")
-    val config = ConfigFactory.parseURL(testConfigURL)
+    private val testConfigURL = getClass.getResource("/config1.conf")
+    private val config = ConfigFactory.parseURL(testConfigURL)
 
     parseConfiguration(config) shouldBe expectedResult
   }
