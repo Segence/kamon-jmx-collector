@@ -44,12 +44,23 @@ private[collector] object MetricCollector {
     (jmxMbeansAndAttributes.toMap, jmxMbeansAndMetricNames.toMap, configWithObjectNames, errorsFromConfigWithObjectNames)
   }
 
+  private def getAttribute(objectName: ObjectName, attributeName: String): Option[String] =
+    objectName.getKeyPropertyList.entrySet.asScala.find { attribute =>
+      attribute.getKey == attributeName
+    }.map { attribute =>
+      attribute.getValue
+    }
+
   def getMetricName(jmxObjectName: ObjectName, queryMbeansAndMetricNames: Map[ObjectName, String]): Option[FullMetricName] =
     queryMbeansAndMetricNames.get(jmxObjectName) match {
       case Some(validResult) =>
         Option(FullMetricName(validResult))
       case _ => for {
-        (objectName, metricName) <- queryMbeansAndMetricNames.find { case (objectName, _) => objectName.getDomain == jmxObjectName.getDomain }
+        (objectName, metricName) <- queryMbeansAndMetricNames.find { case (objectName, _) =>
+          val objectNameTypeAttribute = getAttribute(objectName, "type")
+          objectName.getDomain == jmxObjectName.getDomain &&
+            (objectNameTypeAttribute.contains("*") || getAttribute(objectName, "type") == getAttribute(jmxObjectName, "type"))
+        }
         jmxMbeanProperties = objectName.getKeyPropertyList.entrySet.asScala
         queryMbeanProperties = jmxObjectName.getKeyPropertyList.entrySet.asScala
         zippedProperties = jmxMbeanProperties.zip(queryMbeanProperties)

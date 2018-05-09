@@ -3,7 +3,7 @@
 set -e
 
 function usage {
-    echo "Usage: $0 <dependencies|generate-tag|unit-test|publish-local|publish|publish-to-bintray> [PROJECT]"
+    echo "Usage: $0 <dependencies|generate-tag|unit-test|integration-test|publish-local|publish|publish-to-bintray> [PROJECT]"
     exit 1
 }
 
@@ -20,6 +20,34 @@ function unit-test {
 }
 
 function integration-test {
+
+    if [ -f $(pwd)/src/integTest/docker-compose.yml ]; then
+
+        if [[ -z "${DOCKER_BIND_HOST}" ]]; then
+            if [ "$(uname -s | cut -c1-5)" == "Linux" ]; then
+                export DOCKER_BIND_HOST=$(ip addr | grep 'eth0:' -A2 | tail -n1 | awk '{print $2}' | cut -f1  -d'/')
+            elif [ "$(uname -s | cut -c1-6)" == "Darwin" ]; then
+                export DOCKER_BIND_HOST=$(ifconfig en0 | grep inet | grep -v inet6 | awk '{print $2}')
+            else
+                echo "Unknown operating system, can not determine IP address."
+                exit 1
+            fi
+        fi
+
+        echo -e "\nDocker bind host: $DOCKER_BIND_HOST\n"
+
+        trap 'docker-compose -f ./src/integTest/docker-compose.yml down' INT TERM EXIT
+
+        docker-compose -f ./src/integTest/docker-compose.yml up -d
+
+        if grep -q kafka $(pwd)/src/integTest/docker-compose.yml; then
+            sleep 60
+            docker-compose -f ./src/integTest/docker-compose.yml exec -T broker kafka-topics --create --topic test --partitions 3 --replication-factor 1 --if-not-exists --zookeeper zookeeper:2181
+        fi
+
+        sleep 10
+    fi
+
     ./gradlew clean integrationTest
 }
 
