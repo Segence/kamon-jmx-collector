@@ -9,7 +9,7 @@ import org.scalatest.WordSpec
 import org.scalatest.mockito.MockitoSugar
 import java.{util => javautil}
 import org.mockito.Mockito.when
-import org.mockito.Matchers.any
+import org.mockito.ArgumentMatchers.any
 import scala.collection.JavaConverters._
 
 import scala.util.Success
@@ -18,16 +18,16 @@ class MetricCollectorSpec extends WordSpec {
   "A metric collector" when {
     "getting a metric name" should {
       "return the metric name that exactly matches an object name" in new MetricNameFixture {
-        getMetricName(KafkaConsumerObjectName, ObjectNamesWithoutWildcard) shouldBe Some(FullMetricName("kafka-consumer-metric"))
+        getMetricName(KafkaConsumerObjectName, ObjectNamesWithoutWildcard) shouldBe Some(MetricMetadata("kafka-consumer-metric"))
       }
       "return the metric name that matches an object name having wildcard in the end of the query" in new MetricNameFixture {
-        getMetricName(KafkaConsumerObjectName, ObjectNamesWithWildcardInTheEndOfQuery) shouldBe Some(FullMetricName("kafka-consumer-metric", Some("consumer-1")))
+        getMetricName(KafkaConsumerObjectName, ObjectNamesWithWildcardInTheEndOfQuery) shouldBe Some(MetricMetadata("kafka-consumer-metric", Map("client-id" -> "consumer-1", "type" -> "consumer-metrics")))
       }
       "return the metric name that matches an object name having wildcard in between the query" in new MetricNameFixture {
-        getMetricName(KafkaConsumerObjectName, ObjectNamesWithWildcardInBetweenTheQuery) shouldBe Some(FullMetricName("kafka-consumer-metric", Some("consumer-1-consumer-metrics")))
+        getMetricName(KafkaConsumerObjectName, ObjectNamesWithWildcardInBetweenTheQuery) shouldBe Some(MetricMetadata("kafka-consumer-metric", Map("type" -> "consumer-metrics", "client-id" -> "consumer-1")))
       }
       "return valid metric name when multiple values are wildcards" in new MetricNameFixture {
-        getMetricName(KafkaProducerObjectName, ObjectNamesWithWildcardInValues) shouldBe Some(FullMetricName("kafka-producer2", Some("node-1-producer-1")))
+        getMetricName(KafkaProducerObjectName, ObjectNamesWithWildcardInValues) shouldBe Some(MetricMetadata("kafka-producer2", Map("type" -> "producer-node-metrics", "node-id" -> "node-1", "client-id" -> "producer-1")))
       }
     }
     "collecting JMX metrics" should {
@@ -42,7 +42,7 @@ class MetricCollectorSpec extends WordSpec {
 
         results.length shouldBe 3
 
-        results.map(_._1).toSet shouldBe Set(FullMetricName("os-mbean"), FullMetricName("memory-mbean"))
+        results.map(_._1).toSet shouldBe Set(MetricMetadata("os-mbean"), MetricMetadata("memory-mbean"))
         results.map(_._2).toSet shouldBe Set("AvailableProcessors", "Arch", "HeapMemoryUsage")
 
         errors shouldBe empty
@@ -125,7 +125,7 @@ class MetricCollectorSpec extends WordSpec {
 
         results.size shouldBe 3
 
-        results.find(_._1 == "jmx-os-mbean-AvailableProcessors") shouldBe Some(("jmx-os-mbean-AvailableProcessors", numberOfCPUs, Counter))
+        results.find(_._1 == "jmx-os-mbean-AvailableProcessors") shouldBe Some(("jmx-os-mbean-AvailableProcessors", numberOfCPUs, EmptyTags, Counter))
         results.exists(_._1 == "jmx-memory-mbean-HeapMemoryUsage-committed") shouldBe true
         results.exists(_._1 == "jmx-memory-mbean-HeapMemoryUsage-max") shouldBe true
 
@@ -186,6 +186,8 @@ class MetricCollectorSpec extends WordSpec {
   }
 
   trait JmxMetricConfigurationFixture {
+
+    val EmptyTags = Map.empty[String, String]
 
     protected val configWithInvalidJmxQuery: List[JmxMetricConfiguration] =
       JmxMetricConfiguration("os-mbean", "invalid-query",

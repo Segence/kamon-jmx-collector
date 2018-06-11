@@ -18,9 +18,11 @@ object KamonJmxMetricCollector extends Configuration {
     val (jmxMbeansAndAttributes, jmxMbeansAndMetricNames, configWithObjectNames, errorsFromConfigWithObjectNames) =
       MetricCollector.getJmxMbeanEntities(metricConfiguration.metrics)
 
-    val jmxMetricCollectorActor = system.actorOf(Props(new JmxMetricCollectorActor(
-      metricConfiguration.metrics, jmxMbeansAndAttributes, jmxMbeansAndMetricNames, configWithObjectNames, errorsFromConfigWithObjectNames)
-    ))
+    val collectMetrics = () => MetricCollector.generateMetrics(metricConfiguration.metrics, jmxMbeansAndAttributes,
+                                                               jmxMbeansAndMetricNames, configWithObjectNames,
+                                                               errorsFromConfigWithObjectNames)
+
+    val jmxMetricCollectorActor = system.actorOf(Props(new JmxMetricCollectorActor(collectMetrics)))
 
     system.scheduler.schedule(metricConfiguration.initialDelay, metricConfiguration.checkInterval, jmxMetricCollectorActor, CollectMetrics)
   }
