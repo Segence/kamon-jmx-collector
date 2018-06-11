@@ -9,7 +9,7 @@ import org.scalatest.WordSpec
 import org.scalatest.mockito.MockitoSugar
 import java.{util => javautil}
 import org.mockito.Mockito.when
-import org.mockito.Matchers.any
+import org.mockito.ArgumentMatchers.any
 import scala.collection.JavaConverters._
 
 import scala.util.Success
