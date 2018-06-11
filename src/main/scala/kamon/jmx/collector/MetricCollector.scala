@@ -68,13 +68,13 @@ private[collector] object MetricCollector {
         }
         if areAllPropertiesMatching
       } yield {
-        val metricNameSuffix = zippedProperties.filter { case (jmxProperty, _) =>
-                                    jmxProperty.getValue == "*"
+        val metricTags = zippedProperties.filter { case (jmxProperty, _) =>
+                                  jmxProperty.getKey == "type" || jmxProperty.getValue == "*"
                                 }.map { case (_, queryProperty) =>
                                   (queryProperty.getKey, queryProperty.getValue)
                                 }.toMap
 
-        MetricMetadata(metricName, metricNameSuffix)
+        MetricMetadata(metricName, metricTags)
       }
     }
 

@@ -53,16 +53,16 @@ class KamonJmxCollectorSpec extends FlatSpec with Eventually {
       doSomeEntriesBeginWith(metrics, "jmx_os_memory_HeapMemoryUsage_max") shouldBe true
       doSomeEntriesBeginWith(metrics, "jmx_os_memory_ObjectPendingFinalizationCount") shouldBe true
 
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_connection_count_bucket{client_id="consumer-1"""") shouldBe true
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_connection_count_bucket{client_id="consumer-2"""") shouldBe true
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_connection_count_bucket{type="consumer-metrics",client_id="consumer-1"""") shouldBe true
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_connection_count_bucket{type="consumer-metrics",client_id="consumer-2"""") shouldBe true
 
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer1_outgoing_byte_rate{client_id="producer-1"}""") shouldBe true
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer1_network_io_rate{client_id="producer-1"}""") shouldBe true
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer1_outgoing_byte_rate{client_id="producer-1",type="producer-metrics"}""") shouldBe true
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer1_network_io_rate{client_id="producer-1",type="producer-metrics"}""") shouldBe true
 
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_incoming_byte_rate{node_id="node-1",client_id="producer-1"}""") shouldBe true
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_outgoing_byte_rate{node_id="node-1",client_id="producer-1"}""") shouldBe true
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_incoming_byte_rate{node_id="node--1",client_id="producer-1"}""") shouldBe true
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_outgoing_byte_rate{node_id="node--1",client_id="producer-1"}""") shouldBe true
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_incoming_byte_rate{type="producer-node-metrics",node_id="node-1",client_id="producer-1"}""") shouldBe true
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_outgoing_byte_rate{type="producer-node-metrics",node_id="node-1",client_id="producer-1"}""") shouldBe true
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_incoming_byte_rate{type="producer-node-metrics",node_id="node--1",client_id="producer-1"}""") shouldBe true
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_outgoing_byte_rate{type="producer-node-metrics",node_id="node--1",client_id="producer-1"}""") shouldBe true
     }
   }
 }

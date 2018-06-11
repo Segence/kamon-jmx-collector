@@ -21,13 +21,13 @@ class MetricCollectorSpec extends WordSpec {
         getMetricName(KafkaConsumerObjectName, ObjectNamesWithoutWildcard) shouldBe Some(MetricMetadata("kafka-consumer-metric"))
       }
       "return the metric name that matches an object name having wildcard in the end of the query" in new MetricNameFixture {
-        getMetricName(KafkaConsumerObjectName, ObjectNamesWithWildcardInTheEndOfQuery) shouldBe Some(MetricMetadata("kafka-consumer-metric", Map("client-id" -> "consumer-1")))
+        getMetricName(KafkaConsumerObjectName, ObjectNamesWithWildcardInTheEndOfQuery) shouldBe Some(MetricMetadata("kafka-consumer-metric", Map("client-id" -> "consumer-1", "type" -> "consumer-metrics")))
       }
       "return the metric name that matches an object name having wildcard in between the query" in new MetricNameFixture {
         getMetricName(KafkaConsumerObjectName, ObjectNamesWithWildcardInBetweenTheQuery) shouldBe Some(MetricMetadata("kafka-consumer-metric", Map("type" -> "consumer-metrics", "client-id" -> "consumer-1")))
       }
       "return valid metric name when multiple values are wildcards" in new MetricNameFixture {
-        getMetricName(KafkaProducerObjectName, ObjectNamesWithWildcardInValues) shouldBe Some(MetricMetadata("kafka-producer2", Map("node-id" -> "node-1", "client-id" -> "producer-1")))
+        getMetricName(KafkaProducerObjectName, ObjectNamesWithWildcardInValues) shouldBe Some(MetricMetadata("kafka-producer2", Map("type" -> "producer-node-metrics", "node-id" -> "node-1", "client-id" -> "producer-1")))
       }
     }
     "collecting JMX metrics" should {
