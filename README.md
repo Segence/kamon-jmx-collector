@@ -112,7 +112,9 @@ The following table explains the different configuration parameters and how to s
 As JMX metrics are generated in runtime it is advised to set the `kamon.jmx-collector.initial-delay` parameter to a sensible value, depending on how long it takes for the application to initialise JMX metrics.
 Failing to define `kamon.jmx-collector.mbeans[*].attributes[*].keys` for a [`CompositeData`](https://docs.oracle.com/javase/8/docs/api/javax/management/openmbean/CompositeData.html) attribute will make it impossible to retrieve metrics.
 
-The actual Kamon metric names are generated in the following format: `jmx-${metric-name from configuration}-${any matching parts from wildcard query}-${attribute names}`
+
+Kamon metric names are generated in the following format: `jmx-${metric-name from configuration}-${attribute name}`.
+Tags are added to the metrics as long as there are wildcard queries in the `jmxQuery` attribute.
 
 ### Finding the available JMX queries and attributes
 
