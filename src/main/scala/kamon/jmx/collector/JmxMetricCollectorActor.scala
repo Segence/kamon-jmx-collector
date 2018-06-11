@@ -26,8 +26,8 @@ private[collector] class JmxMetricCollectorActor(
                                                                      errorsFromConfigWithObjectNames)
 
         for {
-          (metricName, metricValue, metricType) <- metricValues
-        } yield metricType.record(metricName, metricValue)
+          (metricName, metricValue, metricTags, metricType) <- metricValues
+        } yield metricType.record(metricName, metricValue, metricTags)
 
         errors.foreach { error =>
           log.error(error, "Failed to retrieve JMX metrics")

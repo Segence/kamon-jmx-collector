@@ -36,7 +36,7 @@ function integration-test {
 
         echo -e "\nDocker bind host: $DOCKER_BIND_HOST\n"
 
-        trap 'docker-compose -f ./src/integTest/docker-compose.yml down' INT TERM EXIT
+        #trap 'docker-compose -f ./src/integTest/docker-compose.yml down' INT TERM EXIT
 
         docker-compose -f ./src/integTest/docker-compose.yml up -d
 

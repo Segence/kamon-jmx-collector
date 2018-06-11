@@ -22,7 +22,7 @@ class KamonJmxCollectorSpec extends FlatSpec with Eventually {
 
   "Kamon JMX collector" should "successfully collect JMX metrics and publish them to Kamon" in {
 
-    val dockerBindHost = sys.env.get("DOCKER_BIND_HOST").getOrElse("localhost")
+    val dockerBindHost = sys.env.getOrElse("DOCKER_BIND_HOST", "localhost")
 
     val kafkaConsumerProperties = new Properties()
     kafkaConsumerProperties.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
@@ -52,14 +52,17 @@ class KamonJmxCollectorSpec extends FlatSpec with Eventually {
       doSomeEntriesBeginWith(metrics, "jmx_os_memory_HeapMemoryUsage_committed") shouldBe true
       doSomeEntriesBeginWith(metrics, "jmx_os_memory_HeapMemoryUsage_max") shouldBe true
       doSomeEntriesBeginWith(metrics, "jmx_os_memory_ObjectPendingFinalizationCount") shouldBe true
-      doSomeEntriesBeginWith(metrics, "jmx_kafka_consumer_consumer_1_connection_count") shouldBe true
-      doSomeEntriesBeginWith(metrics, "jmx_kafka_consumer_consumer_2_connection_count") shouldBe true
-      doSomeEntriesBeginWith(metrics, "jmx_kafka_producer1_producer_1_outgoing_byte_rate") shouldBe true
-      doSomeEntriesBeginWith(metrics, "jmx_kafka_producer1_producer_1_network_io_rate") shouldBe true
-      doSomeEntriesBeginWith(metrics, "jmx_kafka_producer2_node_metrics_node_1_producer_1_incoming_byte_rate") shouldBe true
-      doSomeEntriesBeginWith(metrics, "jmx_kafka_producer2_node_metrics_node_1_producer_1_outgoing_byte_rate") shouldBe true
-      doSomeEntriesBeginWith(metrics, "jmx_kafka_producer2_node_metrics_node__1_producer_1_incoming_byte_rate") shouldBe true
-      doSomeEntriesBeginWith(metrics, "jmx_kafka_producer2_node_metrics_node__1_producer_1_outgoing_byte_rate") shouldBe true
+
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_connection_count_bucket{client_id="consumer-1"""") shouldBe true
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_connection_count_bucket{client_id="consumer-2"""") shouldBe true
+
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer1_outgoing_byte_rate{client_id="producer-1"}""") shouldBe true
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer1_network_io_rate{client_id="producer-1"}""") shouldBe true
+
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_incoming_byte_rate{node_id="node-1",client_id="producer-1"}""") shouldBe true
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_outgoing_byte_rate{node_id="node-1",client_id="producer-1"}""") shouldBe true
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_incoming_byte_rate{node_id="node--1",client_id="producer-1"}""") shouldBe true
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_outgoing_byte_rate{node_id="node--1",client_id="producer-1"}""") shouldBe true
     }
   }
 }
