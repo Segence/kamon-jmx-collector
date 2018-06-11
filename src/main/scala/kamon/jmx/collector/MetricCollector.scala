@@ -5,6 +5,7 @@ import java.{util => javautil}
 import com.segence.commons.jmx.collector.{JmxCollector, MBeanMetricResult}
 import javax.management.ObjectName
 import javax.management.openmbean.CompositeData
+import kamon.Tags
 import kamon.jmx.collector.SupportedKamonMetricTypes.SupportedKamonMetricType
 
 import scala.annotation.tailrec
@@ -13,9 +14,7 @@ import scala.util.{Failure, Success, Try}
 
 private[collector] object MetricCollector {
 
-  case class FullMetricName(metricName: String, metricNameSuffix: Option[String] = None) {
-    override def toString: String = s"$metricName${metricNameSuffix.fold("") { suffix => s"-$suffix" }}"
-  }
+  case class MetricMetadata(metricName: String, metricTags: Tags = Map.empty)
 
   def getJmxMbeanEntities(configuration: List[JmxMetricConfiguration]):
     (Map[ObjectName, Set[String]], Map[ObjectName, String], List[(String, ObjectName, List[JmxMetricAttribute])], List[Throwable]) = {
@@ -51,10 +50,10 @@ private[collector] object MetricCollector {
       attribute.getValue
     }
 
-  def getMetricName(jmxObjectName: ObjectName, queryMbeansAndMetricNames: Map[ObjectName, String]): Option[FullMetricName] =
+  def getMetricName(jmxObjectName: ObjectName, queryMbeansAndMetricNames: Map[ObjectName, String]): Option[MetricMetadata] =
     queryMbeansAndMetricNames.get(jmxObjectName) match {
       case Some(validResult) =>
-        Option(FullMetricName(validResult))
+        Option(MetricMetadata(validResult))
       case _ => for {
         (objectName, metricName) <- queryMbeansAndMetricNames.find { case (objectName, _) =>
           val objectNameTypeAttribute = getAttribute(objectName, "type")
@@ -69,13 +68,13 @@ private[collector] object MetricCollector {
         }
         if areAllPropertiesMatching
       } yield {
-        val metricNameSuffix = zippedProperties.filter { case (jmxProperty, _) =>
-                                    jmxProperty.getValue == "*"
+        val metricTags = zippedProperties.filter { case (jmxProperty, _) =>
+                                  jmxProperty.getKey == "type" || jmxProperty.getValue == "*"
                                 }.map { case (_, queryProperty) =>
-                                  queryProperty.getValue
-                                }.mkString("-")
+                                  (queryProperty.getKey, queryProperty.getValue)
+                                }.toMap
 
-        FullMetricName(metricName, Option(metricNameSuffix))
+        MetricMetadata(metricName, metricTags)
       }
     }
 
@@ -84,7 +83,7 @@ private[collector] object MetricCollector {
                      configWithObjectNames: List[(String, ObjectName, List[JmxMetricAttribute])],
                      errorsFromConfigWithObjectNames: List[Throwable],
                      queryJmxBeansFn: (javautil.Map[ObjectName, javautil.Set[String]] => javautil.Set[MBeanMetricResult])
-                    ): (List[(FullMetricName, String, Any, SupportedKamonMetricType)], List[Throwable]) = {
+                    ): (List[(MetricMetadata, String, Any, Tags, SupportedKamonMetricType)], List[Throwable]) = {
 
     val metricNamesAndValues =
       queryJmxBeansFn(jmxMbeansAndAttributes.map { case (objectName, attributes) =>
@@ -102,7 +101,7 @@ private[collector] object MetricCollector {
                 attribute <- validMbeanMetric.getAttributes.asScala.toList
                 resolvedMetricName <- getMetricName(validMbeanMetric.getObjectInstance.getObjectName, jmxMbeansAndMetricNames)
                 if resolvedMetricName.metricName == metricName && attributeConfig.attributeName == attribute.getName
-              } yield (resolvedMetricName, attribute.getName, attribute.getValue, attributeConfig.metricType)
+              } yield (resolvedMetricName, attribute.getName, attribute.getValue, resolvedMetricName.metricTags, attributeConfig.metricType)
             }
           case (_, Some(error)) =>
             Failure(error)
@@ -143,35 +142,35 @@ private[collector] object MetricCollector {
   }
 
   @tailrec
-  private def extractMetricsAndErrors(metrics: List[(String, String, List[String], Any, SupportedKamonMetricType)], results: (List[(String, Long, SupportedKamonMetricType)], List[Throwable])): (List[(String, Long, SupportedKamonMetricType)], List[Throwable]) =
+  private def extractMetricsAndErrors(metrics: List[(String, String, List[String], Any, Tags, SupportedKamonMetricType)], results: (List[(String, Long, Tags, SupportedKamonMetricType)], List[Throwable])): (List[(String, Long, Tags, SupportedKamonMetricType)], List[Throwable]) =
     metrics match {
       case Nil =>
         results
-      case (metricName, attributeName, attributeKeys, rawAttributeValue: CompositeData, metricType) :: _ =>
+      case (metricName, attributeName, attributeKeys, rawAttributeValue: CompositeData, metricTags, metricType) :: _ =>
 
         val attributeKeyMetrics = attributeKeys.map { attributeKey =>
-          (attributeKey, extractAttributeValue(rawAttributeValue.get(attributeKey)), metricType)
+          (attributeKey, extractAttributeValue(rawAttributeValue.get(attributeKey)), metricTags, metricType)
         }.map {
-          case (attributeKey, Success(attributeValue), attributeMetricType) =>
+          case (attributeKey, Success(attributeValue), metricTags, attributeMetricType) =>
             val fullMetricName = generateMetricName(metricName, attributeName, Some(attributeKey))
-            ( Some((fullMetricName, attributeValue, attributeMetricType)), None )
-          case (_, Failure(error), _) =>
+            ( Some((fullMetricName, attributeValue, metricTags, attributeMetricType)), None )
+          case (_, Failure(error), _, _) =>
             ( None, Some(error))
         }
 
         extractMetricsAndErrors(
           metrics.tail,
           (
-           results._1 ++ attributeKeyMetrics.flatMap(_._1),
-           results._2 ++ attributeKeyMetrics.flatMap(_._2)
+            results._1 ++ attributeKeyMetrics.flatMap(_._1),
+            results._2 ++ attributeKeyMetrics.flatMap(_._2)
           )
         )
 
-      case (metricName, attributeName, _, rawAttributeValue, metricType) :: _ =>
+      case (metricName, attributeName, _, rawAttributeValue, metricTags, metricType) :: _ =>
         extractAttributeValue(rawAttributeValue) match {
           case Success(validAttributeValue) =>
             val fullMetricName = generateMetricName(metricName, attributeName)
-            extractMetricsAndErrors(metrics.tail, ((fullMetricName, validAttributeValue, metricType) :: results._1, results._2))
+            extractMetricsAndErrors(metrics.tail, ((fullMetricName, validAttributeValue, metricTags, metricType) :: results._1, results._2))
           case Failure(error) =>
             extractMetricsAndErrors(metrics.tail, (results._1, error :: results._2))
         }
@@ -193,16 +192,16 @@ private[collector] object MetricCollector {
                       jmxMbeansAndAttributes: Map[ObjectName, Set[String]],
                       jmxMbeansAndMetricNames: Map[ObjectName, String],
                       configWithObjectNames: List[(String, ObjectName, List[JmxMetricAttribute])],
-                      errorsFromConfigWithObjectNames: List[Throwable]): (List[(String, Long, SupportedKamonMetricType)], List[Throwable]) = {
+                      errorsFromConfigWithObjectNames: List[Throwable]): (List[(String, Long, Tags, SupportedKamonMetricType)], List[Throwable]) = {
     val (results, errors) =
       collectMetrics(jmxMbeansAndAttributes, jmxMbeansAndMetricNames, configWithObjectNames, errorsFromConfigWithObjectNames, JmxCollector.queryAsSet)
 
     val resultsIncludingAttributeKeys = for {
-      (metricName, attributeName, attributeValue, metricType) <- results
+      (metricName, attributeName, attributeValue, metricTags, metricType) <- results
       configurationEntry <- configuration
       configurationAttribute <- configurationEntry.attributes
       if metricName.metricName == configurationEntry.metricName && attributeName == configurationAttribute.attributeName
-    } yield (s"$metricName", attributeName, configurationAttribute.keys, attributeValue, metricType)
+    } yield (metricName.metricName, attributeName, configurationAttribute.keys, attributeValue, metricTags, metricType)
 
     val (validMetricResults, errorsInMetricResults) = extractMetricsAndErrors(resultsIncludingAttributeKeys, (Nil, Nil))
     (validMetricResults, errors ++ errorsInMetricResults)

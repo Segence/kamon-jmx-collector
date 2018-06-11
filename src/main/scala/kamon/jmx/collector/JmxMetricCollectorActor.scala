@@ -1,16 +1,12 @@
 package kamon.jmx.collector
 
 import akka.actor.{Actor, ActorLogging}
-import javax.management.ObjectName
+import kamon.Tags
 import kamon.jmx.collector.JmxMetricCollectorActor.{CollectMetrics, MetricsCollectionFinished}
+import kamon.jmx.collector.SupportedKamonMetricTypes.SupportedKamonMetricType
 
-// TODO add tests
 private[collector] class JmxMetricCollectorActor(
-    configuration: List[JmxMetricConfiguration],
-    jmxMbeansAndAttributes: Map[ObjectName, Set[String]],
-    jmxMbeansAndMetricNames: Map[ObjectName, String],
-    configWithObjectNames: List[(String, ObjectName, List[JmxMetricAttribute])],
-    errorsFromConfigWithObjectNames: List[Throwable]
+    collectMetrics: () => (List[(String, Long, Tags, SupportedKamonMetricType)], List[Throwable])
   ) extends Actor with ActorLogging {
 
     import context.become
@@ -21,13 +17,12 @@ private[collector] class JmxMetricCollectorActor(
       case CollectMetrics =>
         become(busy)
         log.debug(s"Received CollectMetrics")
-        val (metricValues, errors) = MetricCollector.generateMetrics(configuration, jmxMbeansAndAttributes,
-                                                                     jmxMbeansAndMetricNames, configWithObjectNames,
-                                                                     errorsFromConfigWithObjectNames)
+
+        val (metricValues, errors) = collectMetrics()
 
         for {
-          (metricName, metricValue, metricType) <- metricValues
-        } yield metricType.record(metricName, metricValue)
+          (metricName, metricValue, metricTags, metricType) <- metricValues
+        } yield metricType.record(metricName, metricValue, metricTags)
 
         errors.foreach { error =>
           log.error(error, "Failed to retrieve JMX metrics")
