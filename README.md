@@ -11,15 +11,15 @@ It was inspired by the [Kamon JMX](https://github.com/kamon-io/kamon-jmx) librar
 Usage
 -----
 
-1. Add the Segence OSS Releases Maven repo to your project, [click here](https://bintray.com/segence/maven-oss-releases/jmx-collector) for instructions
-2. Import the artifact, [click here](https://bintray.com/segence/maven-oss-releases/jmx-collector) for instructions.
+1. Add the Segence OSS Releases Maven repo to your project, [click here](https://bintray.com/segence/maven-oss-releases/kamon-jmx-collector) for instructions
+2. Import the artifact, [click here](https://bintray.com/segence/maven-oss-releases/kamon-jmx-collector) for instructions.
     - SBT example:
     ```$scala
-    libraryDependencies += "io.kamon" %% "kamon-jmx-collector" % "0.1.6"
+    libraryDependencies += "io.kamon" %% "kamon-jmx-collector" % "0.1.7"
     ```
     - Gradle example:
     ```$groovy
-    compile 'io.kamon:kamon-jmx-collector_2.12:0.1.6'
+    compile 'io.kamon:kamon-jmx-collector_2.12:0.1.7'
     ```
 3. The artifact does not include all dependencies to avoid versioning conflict within your application.
    The required libraries have to be added.
