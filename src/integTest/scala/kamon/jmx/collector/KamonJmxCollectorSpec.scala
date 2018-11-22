@@ -12,6 +12,7 @@ import org.scalatest.FlatSpec
 import org.scalatest.Matchers._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Minute, Seconds, Span}
+import scala.collection.JavaConverters._
 
 class KamonJmxCollectorSpec extends FlatSpec with Eventually {
 
@@ -24,8 +25,11 @@ class KamonJmxCollectorSpec extends FlatSpec with Eventually {
 
     val dockerBindHost = sys.env.getOrElse("DOCKER_BIND_HOST", "localhost")
 
+    val testTopicName = "test"
+
     val kafkaConsumerProperties = new Properties()
-    kafkaConsumerProperties.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
+    kafkaConsumerProperties.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, s"$dockerBindHost:9092")
+    kafkaConsumerProperties.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "test-group")
     kafkaConsumerProperties.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, classOf[ByteArrayDeserializer].getName)
     kafkaConsumerProperties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, classOf[ByteArrayDeserializer].getName)
 
@@ -34,11 +38,14 @@ class KamonJmxCollectorSpec extends FlatSpec with Eventually {
     kafkaProducerProperties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, classOf[StringSerializer].getName)
     kafkaProducerProperties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, classOf[StringSerializer].getName)
 
-    new KafkaConsumer[AnyRef, AnyRef](kafkaConsumerProperties)
+    val producer = new KafkaProducer[String, String](kafkaProducerProperties)
+    producer.send(new ProducerRecord[String, String](testTopicName, "some key", "some value"))
+
+    val consumer = new KafkaConsumer[AnyRef, AnyRef](kafkaConsumerProperties)
     new KafkaConsumer[Integer, Integer](kafkaConsumerProperties)
 
-    val producer = new KafkaProducer[String, String](kafkaProducerProperties)
-    producer.send(new ProducerRecord[String, String]("test", "some key", "some value"))
+    consumer.subscribe( (testTopicName :: Nil).asJava )
+    consumer.poll(5000L)
 
     implicit val system: ActorSystem = ActorSystem()
 
@@ -63,6 +70,10 @@ class KamonJmxCollectorSpec extends FlatSpec with Eventually {
       doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_outgoing_byte_rate{type="producer-node-metrics",node_id="node-1",client_id="producer-1"}""") shouldBe true
       doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_incoming_byte_rate{type="producer-node-metrics",node_id="node--1",client_id="producer-1"}""") shouldBe true
       doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_outgoing_byte_rate{type="producer-node-metrics",node_id="node--1",client_id="producer-1"}""") shouldBe true
+
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_fetch_manager_topic_bytes_consumed_rate{topic="test",type="consumer-fetch-manager-metrics",client_id="consumer-1"}""") shouldBe true
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_fetch_manager_records_lag_max{type="consumer-fetch-manager-metrics",client_id="consumer-1"}""") shouldBe true
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_fetch_manager_records_lag_max{type="consumer-fetch-manager-metrics",client_id="consumer-2"}""") shouldBe true
     }
   }
 }
