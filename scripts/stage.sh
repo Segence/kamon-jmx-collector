@@ -12,7 +12,7 @@ function dependencies {
 }
 
 function generate-tag {
-    git tag --force $(./gradlew printVersion | sed -n '2p')
+    git tag --force $(grep version gradle.properties | awk '{print $3}')
 }
 
 function unit-test {
