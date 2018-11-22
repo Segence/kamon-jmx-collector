@@ -29,6 +29,10 @@ class MetricCollectorSpec extends WordSpec {
       "return valid metric name when multiple values are wildcards" in new MetricNameFixture {
         getMetricName(KafkaProducerObjectName, ObjectNamesWithWildcardInValues) shouldBe Some(MetricMetadata("kafka-producer2", Map("type" -> "producer-node-metrics", "node-id" -> "node-1", "client-id" -> "producer-1")))
       }
+      "return the metrics name that matches the object name and all properties when properties overlap" in new SimilarMetricNameFixture {
+        getMetricName(KafkaConsumerObjectName, ObjectNamesWithWildcardInValues) shouldBe Some(MetricMetadata("kafka-consumer2", Map("type" -> "consumer-fetch-manager-metrics", "client-id" -> "client-1")))
+        getMetricName(KafkaConsumerExtendedObjectName, ObjectNamesWithWildcardInValues) shouldBe Some(MetricMetadata("kafka-consumer1", Map("topic" -> "test-topic", "type" -> "consumer-fetch-manager-metrics", "client-id" -> "client-1")))
+      }
     }
     "collecting JMX metrics" should {
       "retrieve all available JMX metrics and provide the results with metric names" in new JmxMetricConfigurationFixture {
@@ -153,7 +157,6 @@ class MetricCollectorSpec extends WordSpec {
     val TestObjectNameWithWildcardInTheEndOfQuery = new ObjectName("kafka.consumer:type=consumer-metrics,client-id=*")
     val TestObjectNameWithWildcardInBetweenTheQuery = new ObjectName("kafka.consumer:type=*,client-id=*")
     val KafkaConsumerMetricName = "kafka-consumer-metric"
-    val KafkaProducerMetricName = "kafka-producer-metric"
 
     val SimpleTestObjectName = new ObjectName("other-some-object-name", "key", "value")
     val OtherTestMetricName = "other-some-metric-name"
@@ -180,9 +183,19 @@ class MetricCollectorSpec extends WordSpec {
     )
   }
 
+  trait SimilarMetricNameFixture {
+    val KafkaConsumerObjectName         = new ObjectName("kafka.consumer:type=consumer-fetch-manager-metrics,client-id=client-1")
+    val KafkaConsumerExtendedObjectName = new ObjectName("kafka.consumer:type=consumer-fetch-manager-metrics,client-id=client-1,topic=test-topic")
+
+    val ObjectNamesWithWildcardInValues = Map(
+      new ObjectName("kafka.consumer:type=consumer-fetch-manager-metrics,client-id=*,topic=*") -> "kafka-consumer1",
+      new ObjectName("kafka.consumer:type=consumer-fetch-manager-metrics,client-id=*") -> "kafka-consumer2"
+    )
+  }
+
   trait JmxQueryFunctionalityFixture extends MockitoSugar {
     protected val queryJmxBeansFnMock: javautil.Map[ObjectName, javautil.Set[String]] => javautil.Set[MBeanMetricResult] =
-      mock[(javautil.Map[ObjectName, javautil.Set[String]] => javautil.Set[MBeanMetricResult])]
+      mock[javautil.Map[ObjectName, javautil.Set[String]] => javautil.Set[MBeanMetricResult]]
   }
 
   trait JmxMetricConfigurationFixture {
