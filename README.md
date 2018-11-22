@@ -15,11 +15,11 @@ Usage
 2. Import the artifact, [click here](https://bintray.com/segence/maven-oss-releases/kamon-jmx-collector) for instructions.
     - SBT example:
     ```$scala
-    libraryDependencies += "io.kamon" %% "kamon-jmx-collector" % "0.1.7"
+    libraryDependencies += "io.kamon" %% "kamon-jmx-collector" % "0.1.8"
     ```
     - Gradle example:
     ```$groovy
-    compile 'io.kamon:kamon-jmx-collector_2.12:0.1.7'
+    compile 'io.kamon:kamon-jmx-collector_2.12:0.1.8'
     ```
 3. The artifact does not include all dependencies to avoid versioning conflict within your application.
    The required libraries have to be added.

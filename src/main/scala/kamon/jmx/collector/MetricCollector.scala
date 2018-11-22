@@ -14,6 +14,8 @@ import scala.util.{Failure, Success, Try}
 
 private[collector] object MetricCollector {
 
+  private val TypeAttributeName = "type"
+
   case class MetricMetadata(metricName: String, metricTags: Tags = Map.empty)
 
   def getJmxMbeanEntities(configuration: List[JmxMetricConfiguration]):
@@ -50,39 +52,55 @@ private[collector] object MetricCollector {
       attribute.getValue
     }
 
-  def getMetricName(jmxObjectName: ObjectName, queryMbeansAndMetricNames: Map[ObjectName, String]): Option[MetricMetadata] =
-    queryMbeansAndMetricNames.get(jmxObjectName) match {
-      case Some(validResult) =>
-        Option(MetricMetadata(validResult))
-      case _ => for {
-        (objectName, metricName) <- queryMbeansAndMetricNames.find { case (objectName, _) =>
-          val objectNameTypeAttribute = getAttribute(objectName, "type")
-          objectName.getDomain == jmxObjectName.getDomain &&
-            (objectNameTypeAttribute.contains("*") || getAttribute(objectName, "type") == getAttribute(jmxObjectName, "type"))
-        }
-        jmxMbeanProperties = objectName.getKeyPropertyList.entrySet.asScala
-        queryMbeanProperties = jmxObjectName.getKeyPropertyList.entrySet.asScala
-        zippedProperties = jmxMbeanProperties.zip(queryMbeanProperties)
-        areAllPropertiesMatching = zippedProperties.forall { case (jmxProperty, queryProperty) =>
+  @tailrec
+  private def findMetricName(jmxObjectName: ObjectName, queryMbeansAndMetricNames: List[(ObjectName, String)],
+                             result: Option[MetricMetadata]): Option[MetricMetadata] = queryMbeansAndMetricNames match {
+    case Nil =>
+      result
+    case (objectName, metricName) :: rest =>
+
+      val metricFound =
+        objectName.getDomain == jmxObjectName.getDomain &&
+        (
+          getAttribute(objectName, TypeAttributeName).contains("*") ||
+          getAttribute(objectName, TypeAttributeName) == getAttribute(jmxObjectName, TypeAttributeName)
+        )
+
+      if (!metricFound) {
+        findMetricName(jmxObjectName, rest, result)
+      } else {
+        val jmxMbeanProperties = objectName.getKeyPropertyList.entrySet.asScala
+        val queryMbeanProperties = jmxObjectName.getKeyPropertyList.entrySet.asScala
+        val zippedProperties = jmxMbeanProperties.zip(queryMbeanProperties)
+        val areAllPropertiesMatching = zippedProperties.forall { case (jmxProperty, queryProperty) =>
           jmxProperty.getKey == queryProperty.getKey && (jmxProperty.getValue == "*" || jmxProperty.getValue == queryProperty.getValue)
         }
-        if areAllPropertiesMatching
-      } yield {
-        val metricTags = zippedProperties.filter { case (jmxProperty, _) =>
-                                  jmxProperty.getKey == "type" || jmxProperty.getValue == "*"
-                                }.map { case (_, queryProperty) =>
-                                  (queryProperty.getKey, queryProperty.getValue)
-                                }.toMap
 
-        MetricMetadata(metricName, metricTags)
+        if (!areAllPropertiesMatching) {
+          findMetricName(jmxObjectName, rest, result)
+        } else {
+          val metricTags = zippedProperties.filter { case (jmxProperty, _) =>
+            jmxProperty.getKey == TypeAttributeName || jmxProperty.getValue == "*"
+          }.map { case (_, queryProperty) =>
+            (queryProperty.getKey, queryProperty.getValue)
+          }.toMap
+
+          Option(MetricMetadata(metricName, metricTags))
+        }
       }
+  }
+
+  def getMetricName(jmxObjectName: ObjectName, queryMbeansAndMetricNames: Map[ObjectName, String]): Option[MetricMetadata] =
+    queryMbeansAndMetricNames.get(jmxObjectName) match {
+      case Some(validResult) => Option(MetricMetadata(validResult))
+      case _                 => findMetricName(jmxObjectName, queryMbeansAndMetricNames.toList.sortBy(_._1.toString), None)
     }
 
   def collectMetrics(jmxMbeansAndAttributes: Map[ObjectName, Set[String]],
                      jmxMbeansAndMetricNames: Map[ObjectName, String],
                      configWithObjectNames: List[(String, ObjectName, List[JmxMetricAttribute])],
                      errorsFromConfigWithObjectNames: List[Throwable],
-                     queryJmxBeansFn: (javautil.Map[ObjectName, javautil.Set[String]] => javautil.Set[MBeanMetricResult])
+                     queryJmxBeansFn: javautil.Map[ObjectName, javautil.Set[String]] => javautil.Set[MBeanMetricResult]
                     ): (List[(MetricMetadata, String, Any, Tags, SupportedKamonMetricType)], List[Throwable]) = {
 
     val metricNamesAndValues =

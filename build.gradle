@@ -1,17 +1,8 @@
-buildscript {
-  repositories {
-    mavenCentral()
-  }
-  dependencies {
-    classpath "com.adtran:scala-multiversion-plugin:1.+"
-  }
-}
-
 plugins {
-  id 'com.github.maiflai.scalatest' version '0.19'
-  id 'nebula.integtest' version '3.4.0'
-  id 'com.jfrog.bintray' version '1.7.3'
-  id "com.adtran.scala-multiversion-plugin" version '1.0.30'
+  id 'com.github.maiflai.scalatest' version '0.23'
+  id 'nebula.integtest' version '5.1.2'
+  id 'com.jfrog.bintray' version '1.8.4'
+  id "com.adtran.scala-multiversion-plugin" version '1.0.33'
 }
 
 apply plugin: 'java'
