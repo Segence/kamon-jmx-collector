@@ -14,6 +14,8 @@ import scala.util.{Failure, Success, Try}
 
 private[collector] object MetricCollector {
 
+  private val TypeAttributeName = "type"
+
   case class MetricMetadata(metricName: String, metricTags: Tags = Map.empty)
 
   def getJmxMbeanEntities(configuration: List[JmxMetricConfiguration]):
@@ -60,8 +62,8 @@ private[collector] object MetricCollector {
       val metricFound =
         objectName.getDomain == jmxObjectName.getDomain &&
         (
-          getAttribute(objectName, "type").contains("*") ||
-          getAttribute(objectName, "type") == getAttribute(jmxObjectName, "type")
+          getAttribute(objectName, TypeAttributeName).contains("*") ||
+          getAttribute(objectName, TypeAttributeName) == getAttribute(jmxObjectName, TypeAttributeName)
         )
 
       if (!metricFound) {
@@ -78,7 +80,7 @@ private[collector] object MetricCollector {
           findMetricName(jmxObjectName, rest, result)
         } else {
           val metricTags = zippedProperties.filter { case (jmxProperty, _) =>
-            jmxProperty.getKey == "type" || jmxProperty.getValue == "*"
+            jmxProperty.getKey == TypeAttributeName || jmxProperty.getValue == "*"
           }.map { case (_, queryProperty) =>
             (queryProperty.getKey, queryProperty.getValue)
           }.toMap
