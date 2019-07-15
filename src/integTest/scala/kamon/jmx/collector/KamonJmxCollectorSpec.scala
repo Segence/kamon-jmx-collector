@@ -4,7 +4,6 @@ import java.util.Properties
 
 import akka.actor.ActorSystem
 import kamon.Kamon
-import kamon.prometheus.PrometheusReporter
 import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer}
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
 import org.apache.kafka.common.serialization.{ByteArrayDeserializer, StringSerializer}
@@ -49,7 +48,7 @@ class KamonJmxCollectorSpec extends FlatSpec with Eventually {
 
     implicit val system: ActorSystem = ActorSystem()
 
-    Kamon.addReporter(new PrometheusReporter())
+    Kamon.init()
     KamonJmxMetricCollector()
 
     eventually {

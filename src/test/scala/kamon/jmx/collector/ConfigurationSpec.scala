@@ -3,8 +3,10 @@ package kamon.jmx.collector
 import com.typesafe.config.ConfigFactory
 import kamon.jmx.collector.SupportedKamonMetricTypes.{Counter, Histogram}
 import org.scalatest.FlatSpec
-import scala.concurrent.duration._
 import org.scalatest.Matchers._
+
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 class ConfigurationSpec extends FlatSpec {
   "A configuration parser" should "parse valid config" in new Configuration {

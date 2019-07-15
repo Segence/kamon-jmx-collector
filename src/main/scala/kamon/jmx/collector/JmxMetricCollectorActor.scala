@@ -1,12 +1,12 @@
 package kamon.jmx.collector
 
 import akka.actor.{Actor, ActorLogging}
-import kamon.Tags
 import kamon.jmx.collector.JmxMetricCollectorActor.{CollectMetrics, MetricsCollectionFinished}
 import kamon.jmx.collector.SupportedKamonMetricTypes.SupportedKamonMetricType
+import kamon.tag.TagSet
 
 private[collector] class JmxMetricCollectorActor(
-    collectMetrics: () => (List[(String, Long, Tags, SupportedKamonMetricType)], List[Throwable])
+    collectMetrics: () => (List[(String, Long, TagSet, SupportedKamonMetricType)], List[Throwable])
   ) extends Actor with ActorLogging {
 
     import context.become
