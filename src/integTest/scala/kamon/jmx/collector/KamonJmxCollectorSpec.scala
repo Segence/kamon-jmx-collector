@@ -7,8 +7,9 @@ import kamon.Kamon
 import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer}
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
 import org.apache.kafka.common.serialization.{ByteArrayDeserializer, StringSerializer}
-import org.scalatest.FlatSpec
+import org.scalatest.{Assertion, FlatSpec}
 import org.scalatest.Matchers._
+import org.scalatest.Inspectors._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Minute, Seconds, Span}
 import scala.collection.JavaConverters._
@@ -18,7 +19,7 @@ class KamonJmxCollectorSpec extends FlatSpec with Eventually {
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(1, Minute)), interval = scaled(Span(5, Seconds)))
 
-  def doSomeEntriesBeginWith(lines: List[String], beginWith: String): Boolean = lines.exists(_.startsWith(beginWith))
+  def doSomeEntriesBeginWith(lines: List[String], beginWith: String): Assertion = forAll(lines) { line => line should startWith(beginWith) }
 
   "Kamon JMX collector" should "successfully collect JMX metrics and publish them to Kamon" in {
 
