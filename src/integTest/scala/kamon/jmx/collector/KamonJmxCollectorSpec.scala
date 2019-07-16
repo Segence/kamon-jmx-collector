@@ -71,8 +71,8 @@ class KamonJmxCollectorSpec extends FlatSpec with Eventually {
       doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_outgoing_byte_rate{type="producer-node-metrics",client_id="producer-1",node_id="node--1"}""")
 
       doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_fetch_manager_topic_bytes_consumed_rate{client_id="consumer-1",topic="test",type="consumer-fetch-manager-metrics"}""")
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_fetch_manager_records_lag_max{client_id="consumer-1", type="consumer-fetch-manager-metrics"}""")
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_fetch_manager_records_lag_max{client_id="consumer-2", type="consumer-fetch-manager-metrics"}""")
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_fetch_manager_records_lag_max{client_id="consumer-1",type="consumer-fetch-manager-metrics"}""")
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_fetch_manager_records_lag_max{client_id="consumer-2",type="consumer-fetch-manager-metrics"}""")
     }
   }
 }
