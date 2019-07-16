@@ -59,20 +59,20 @@ class KamonJmxCollectorSpec extends FlatSpec with Eventually {
       doSomeEntriesBeginWith(metrics, "jmx_os_memory_HeapMemoryUsage_max")
       doSomeEntriesBeginWith(metrics, "jmx_os_memory_ObjectPendingFinalizationCount")
 
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_connection_count_bucket{type="consumer-metrics",client_id="consumer-1"""")
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_connection_count_bucket{type="consumer-metrics",client_id="consumer-2"""")
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_connection_count_bucket{client_id="consumer-1",type="consumer-metrics"""")
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_connection_count_bucket{client_id="consumer-2",type="consumer-metrics"""")
 
       doSomeEntriesBeginWith(metrics, """jmx_kafka_producer1_outgoing_byte_rate{client_id="producer-1",type="producer-metrics"}""")
       doSomeEntriesBeginWith(metrics, """jmx_kafka_producer1_network_io_rate{client_id="producer-1",type="producer-metrics"}""")
 
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_incoming_byte_rate{type="producer-node-metrics",node_id="node-1",client_id="producer-1"}""")
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_outgoing_byte_rate{type="producer-node-metrics",node_id="node-1",client_id="producer-1"}""")
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_incoming_byte_rate{type="producer-node-metrics",node_id="node--1",client_id="producer-1"}""")
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_outgoing_byte_rate{type="producer-node-metrics",node_id="node--1",client_id="producer-1"}""")
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_incoming_byte_rate{type="producer-node-metrics",client_id="producer-1",node_id="node-1"}""")
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_outgoing_byte_rate{type="producer-node-metrics",client_id="producer-1",node_id="node-1"}""")
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_incoming_byte_rate{type="producer-node-metrics",client_id="producer-1",node_id="node--1"}""")
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_outgoing_byte_rate{type="producer-node-metrics",client_id="producer-1",node_id="node--1"}""")
 
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_fetch_manager_topic_bytes_consumed_rate{topic="test",type="consumer-fetch-manager-metrics",client_id="consumer-1"}""")
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_fetch_manager_records_lag_max{type="consumer-fetch-manager-metrics",client_id="consumer-1"}""")
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_fetch_manager_records_lag_max{type="consumer-fetch-manager-metrics",client_id="consumer-2"}""")
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_fetch_manager_topic_bytes_consumed_rate{client_id="consumer-1",topic="test",type="consumer-fetch-manager-metrics"}""")
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_fetch_manager_records_lag_max{client_id="consumer-1", type="consumer-fetch-manager-metrics"}""")
+      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_fetch_manager_records_lag_max{client_id="consumer-2", type="consumer-fetch-manager-metrics"}""")
     }
   }
 }
