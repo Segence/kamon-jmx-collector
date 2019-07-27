@@ -21,11 +21,11 @@ class SupportedKamonMetricTypesSpec extends WordSpec {
       "successfully parse a Histogram type" in {
         parse("histogram") shouldBe Histogram
       }
-      "successfully parse an IncrementingRangeSampler type" in {
-        parse("incrementing-range-sampler") shouldBe IncrementingRangeSampler
+      "successfully parse an IncrementingGauge type" in {
+        parse("incrementing-gauge") shouldBe IncrementingGauge
       }
-      "successfully parse a DecrementingRangeSampler type" in {
-        parse("decrementing-range-sampler") shouldBe DecrementingRangeSampler
+      "successfully parse a DecrementingGauge type" in {
+        parse("decrementing-gauge") shouldBe DecrementingGauge
       }
       "successfully parse a PunctualGauge type" in {
         parse("punctual-gauge") shouldBe PunctualGauge
@@ -51,15 +51,15 @@ class SupportedKamonMetricTypesSpec extends WordSpec {
           Histogram.recordValue(histogramMetricMock, 20L)
           verify(histogramMetricMock).record(20L)
         }
-        "support an IncrementingRangeSampler type" in new MetricRecordingFixture {
-          when(rangeSamplerMetricMock.withTags(TagSet.Empty)).thenReturn(rangeSamplerMetricMock)
-          IncrementingRangeSampler.recordValue(rangeSamplerMetricMock, 20L)
-          verify(rangeSamplerMetricMock).increment(20L)
+        "support an IncrementingGauge type" in new MetricRecordingFixture {
+          when(gaugeMetricMock.withTags(TagSet.Empty)).thenReturn(gaugeMetricMock)
+          IncrementingGauge.recordValue(gaugeMetricMock, 20L)
+          verify(gaugeMetricMock).increment(20L)
         }
-        "support a DecrementingRangeSampler type" in new MetricRecordingFixture {
-          when(rangeSamplerMetricMock.withTags(TagSet.Empty)).thenReturn(rangeSamplerMetricMock)
-          DecrementingRangeSampler.recordValue(rangeSamplerMetricMock, 20L)
-          verify(rangeSamplerMetricMock).decrement(20L)
+        "support a DecrementingGauge type" in new MetricRecordingFixture {
+          when(gaugeMetricMock.withTags(TagSet.Empty)).thenReturn(gaugeMetricMock)
+          DecrementingGauge.recordValue(gaugeMetricMock, 20L)
+          verify(gaugeMetricMock).decrement(20L)
         }
         "support a PunctualGauge type" in new MetricRecordingFixture {
           when(gaugeMetricMock.withTags(TagSet.Empty)).thenReturn(gaugeMetricMock)
@@ -78,15 +78,15 @@ class SupportedKamonMetricTypesSpec extends WordSpec {
           Histogram.recordValue(histogramMetricMock, 20L, testTags)
           verify(histogramMetricMock).record(20L)
         }
-        "support an IncrementingRangeSampler type" in new MetricRecordingFixture {
-          when(rangeSamplerMetricMock.withTags(testTags)).thenReturn(rangeSamplerMetricMock)
-          IncrementingRangeSampler.recordValue(rangeSamplerMetricMock, 20L, testTags)
-          verify(rangeSamplerMetricMock).increment(20L)
+        "support an IncrementingGauge type" in new MetricRecordingFixture {
+          when(gaugeMetricMock.withTags(testTags)).thenReturn(gaugeMetricMock)
+          IncrementingGauge.recordValue(gaugeMetricMock, 20L, testTags)
+          verify(gaugeMetricMock).increment(20L)
         }
-        "support a DecrementingRangeSampler type" in new MetricRecordingFixture {
-          when(rangeSamplerMetricMock.withTags(testTags)).thenReturn(rangeSamplerMetricMock)
-          DecrementingRangeSampler.recordValue(rangeSamplerMetricMock, 20L, testTags)
-          verify(rangeSamplerMetricMock).decrement(20L)
+        "support a DecrementingGauge type" in new MetricRecordingFixture {
+          when(gaugeMetricMock.withTags(testTags)).thenReturn(gaugeMetricMock)
+          DecrementingGauge.recordValue(gaugeMetricMock, 20L, testTags)
+          verify(gaugeMetricMock).decrement(20L)
         }
         "support a PunctualGauge type" in new MetricRecordingFixture {
           when(gaugeMetricMock.withTags(testTags)).thenReturn(gaugeMetricMock)
@@ -101,10 +101,7 @@ class SupportedKamonMetricTypesSpec extends WordSpec {
 
     var passedMetricName: String = ""
 
-    val counterMetricMock = {
-      val m = mock[kamon.metric.Counter]
-      m
-    }
+    val counterMetricMock = mock[kamon.metric.Counter]
 
     override type T = kamon.metric.Counter
     override protected def getMetricInstrument(metricName: String): T = {

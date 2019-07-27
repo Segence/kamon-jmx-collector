@@ -4,6 +4,7 @@ import java.util.Properties
 
 import akka.actor.ActorSystem
 import kamon.Kamon
+import kamon.prometheus.PrometheusReporter
 import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer}
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
 import org.apache.kafka.common.serialization.{ByteArrayDeserializer, StringSerializer}
@@ -11,6 +12,7 @@ import org.scalatest.{Assertion, FlatSpec}
 import org.scalatest.Matchers._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Minute, Seconds, Span}
+
 import scala.collection.JavaConverters._
 
 class KamonJmxCollectorSpec extends FlatSpec with Eventually {
