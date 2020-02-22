@@ -4,7 +4,7 @@ import org.scalatest.WordSpec
 import org.scalatest.Matchers._
 import SupportedKamonMetricTypes._
 import kamon.tag.TagSet
-import org.scalatest.mockito.MockitoSugar
+import org.scalatestplus.mockito.MockitoSugar
 import org.mockito.Mockito.{verify, when}
 
 class SupportedKamonMetricTypesSpec extends WordSpec {

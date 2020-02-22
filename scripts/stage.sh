@@ -26,7 +26,9 @@ function integration-test {
         if [[ -z "${DOCKER_BIND_HOST}" ]]; then
             if [ "$(uname -s | cut -c1-5)" == "Linux" ]; then
                 ip addr
-                export DOCKER_BIND_HOST=$(ip addr | grep 'docker0:' -A2 | tail -n1 | awk '{print $2}' | cut -f1  -d'/')
+                [[ -n "${CI_ENVIRONMENT}" ]] && DOCKER_DEVICE=ens4 || DOCKER_DEVICE=docker0
+                echo "Using Docker device: ${DOCKER_DEVICE}"
+                export DOCKER_BIND_HOST=$(ip addr | grep "${DOCKER_DEVICE}:" -A2 | tail -n1 | awk '{print $2}' | cut -f1  -d'/')
             elif [ "$(uname -s | cut -c1-6)" == "Darwin" ]; then
                 export DOCKER_BIND_HOST=$(ifconfig en0 | grep inet | grep -v inet6 | awk '{print $2}')
             else

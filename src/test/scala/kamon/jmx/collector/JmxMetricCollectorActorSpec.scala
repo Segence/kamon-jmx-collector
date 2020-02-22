@@ -8,7 +8,7 @@ import kamon.jmx.collector.SupportedKamonMetricTypes.{Counter, SupportedKamonMet
 import kamon.tag.TagSet
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike}
-import org.scalatest.mockito.MockitoSugar
+import org.scalatestplus.mockito.MockitoSugar
 import org.mockito.Mockito.{doAnswer, times, verify, when}
 import org.mockito.internal.stubbing.answers.{AnswersWithDelay, Returns}
 

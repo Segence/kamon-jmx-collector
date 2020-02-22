@@ -6,7 +6,7 @@ import kamon.jmx.collector.MetricCollector._
 import kamon.jmx.collector.SupportedKamonMetricTypes.{Counter, Histogram}
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import org.scalatest.mockito.MockitoSugar
+import org.scalatestplus.mockito.MockitoSugar
 import java.{util => javautil}
 
 import kamon.tag.TagSet
