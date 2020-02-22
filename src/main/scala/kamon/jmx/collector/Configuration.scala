@@ -30,7 +30,7 @@ private[collector] trait Configuration {
       val metricName: String = nameObj.unwrapped().asInstanceOf[String]
       val jmxQuery: String = queryObj.unwrapped().asInstanceOf[String]
 
-      val attributesList: Seq[(String, Any)] = for {
+      val attributesList: collection.Seq[(String, Any)] = for {
         attributeDefinition <- attrListObj.unwrapped().asInstanceOf[java.util.List[Any]].asScala
         (attributeName, attributeValue) <- attributeDefinition.asInstanceOf[java.util.HashMap[String, Any]].asScala.toMap
       } yield (attributeName, attributeValue)

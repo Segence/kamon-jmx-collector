@@ -3,16 +3,17 @@ package kamon.jmx.collector
 import akka.actor.{ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
-import kamon.Tags
 import kamon.jmx.collector.JmxMetricCollectorActor.CollectMetrics
 import kamon.jmx.collector.SupportedKamonMetricTypes.{Counter, SupportedKamonMetricType}
+import kamon.tag.TagSet
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike}
-import org.scalatest.mockito.MockitoSugar
+import org.scalatestplus.mockito.MockitoSugar
 import org.mockito.Mockito.{doAnswer, times, verify, when}
 import org.mockito.internal.stubbing.answers.{AnswersWithDelay, Returns}
 
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
 class JmxMetricCollectorActorSpec extends TestKit(ActorSystem("JmxMetricCollectorActorSpec")) with ImplicitSender with FlatSpecLike with BeforeAndAfterAll with Eventually {
 
@@ -52,14 +53,14 @@ class JmxMetricCollectorActorSpec extends TestKit(ActorSystem("JmxMetricCollecto
     implicit val timeout = Timeout(5 seconds)
 
     val metricTypeMock = mock[SupportedKamonMetricType]
-    val collectMetricsMock = mock[() => (List[(String, Long, Tags, SupportedKamonMetricType)], List[Throwable])]
+    val collectMetricsMock = mock[() => (List[(String, Long, TagSet, SupportedKamonMetricType)], List[Throwable])]
 
     val TestMetricName = "testMetricName"
     val TestMetricValue = 10L
-    val TestMetricTags = Map("someTag" -> "someValue")
+    val TestMetricTags = TagSet.of("someTag", "someValue")
     val TestTaskExecutionTime = (2 seconds).toMillis
 
-    val SuccessfulMetricCollectionResult: (List[(String, Long, Tags, SupportedKamonMetricType)], List[Throwable]) =
+    val SuccessfulMetricCollectionResult: (List[(String, Long, TagSet, SupportedKamonMetricType)], List[Throwable]) =
       ( (TestMetricName, TestMetricValue, TestMetricTags, metricTypeMock) :: Nil, Nil)
 
     val underTest = system.actorOf(Props(new JmxMetricCollectorActor(collectMetricsMock)))

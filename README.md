@@ -15,26 +15,26 @@ Usage
 2. Import the artifact, [click here](https://bintray.com/segence/maven-oss-releases/kamon-jmx-collector) for instructions.
     - SBT example:
     ```$scala
-    libraryDependencies += "io.kamon" %% "kamon-jmx-collector" % "0.1.8"
+    libraryDependencies += "io.kamon" %% "kamon-jmx-collector" % "1.0.0-RC1"
     ```
     - Gradle example:
     ```$groovy
-    compile 'io.kamon:kamon-jmx-collector_2.12:0.1.8'
+    compile 'io.kamon:kamon-jmx-collector_2.12:1.0.0-RC1'
     ```
 3. The artifact does not include all dependencies to avoid versioning conflict within your application.
    The required libraries have to be added.
      - SBT example:
      ```$scala
-     libraryDependencies += "io.kamon" %% "kamon-core" % "1.1.2"
-     libraryDependencies += "com.typesafe" % "config" % "1.3.2"
-     libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.5.12"
+     libraryDependencies += "io.kamon" %% "kamon-core" % "2.0.4"
+     libraryDependencies += "com.typesafe" % "config" % "1.3.3"
+     libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.5.23"
      ```
      - Gradle example:
      ```$groovy
       compile(
-        "io.kamon:kamon-core_2.12:1.1.2",
-        "com.typesafe:config:1.3.2",
-        "com.typesafe.akka:akka-actor_2.12:2.5.12"
+        "io.kamon:kamon-core_2.12:2.0.4",
+        "com.typesafe:config:1.3.3",
+        "com.typesafe.akka:akka-actor_2.12:2.5.23"
       )
      ```
  4. Add a configuration to your `application.conf` file describing the `MBeans` to query. Example:

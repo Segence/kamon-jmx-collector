@@ -6,12 +6,14 @@ import kamon.jmx.collector.MetricCollector._
 import kamon.jmx.collector.SupportedKamonMetricTypes.{Counter, Histogram}
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import org.scalatest.mockito.MockitoSugar
+import org.scalatestplus.mockito.MockitoSugar
 import java.{util => javautil}
+
+import kamon.tag.TagSet
 import org.mockito.Mockito.when
 import org.mockito.ArgumentMatchers.any
-import scala.collection.JavaConverters._
 
+import scala.collection.JavaConverters._
 import scala.util.Success
 
 class MetricCollectorSpec extends WordSpec {
@@ -21,17 +23,17 @@ class MetricCollectorSpec extends WordSpec {
         getMetricName(KafkaConsumerObjectName, ObjectNamesWithoutWildcard) shouldBe Some(MetricMetadata("kafka-consumer-metric"))
       }
       "return the metric name that matches an object name having wildcard in the end of the query" in new MetricNameFixture {
-        getMetricName(KafkaConsumerObjectName, ObjectNamesWithWildcardInTheEndOfQuery) shouldBe Some(MetricMetadata("kafka-consumer-metric", Map("client-id" -> "consumer-1", "type" -> "consumer-metrics")))
+        getMetricName(KafkaConsumerObjectName, ObjectNamesWithWildcardInTheEndOfQuery) shouldBe Some(MetricMetadata("kafka-consumer-metric", TagSet.from(Map("client-id" -> "consumer-1", "type" -> "consumer-metrics"))))
       }
       "return the metric name that matches an object name having wildcard in between the query" in new MetricNameFixture {
-        getMetricName(KafkaConsumerObjectName, ObjectNamesWithWildcardInBetweenTheQuery) shouldBe Some(MetricMetadata("kafka-consumer-metric", Map("type" -> "consumer-metrics", "client-id" -> "consumer-1")))
+        getMetricName(KafkaConsumerObjectName, ObjectNamesWithWildcardInBetweenTheQuery) shouldBe Some(MetricMetadata("kafka-consumer-metric", TagSet.from(Map("type" -> "consumer-metrics", "client-id" -> "consumer-1"))))
       }
       "return valid metric name when multiple values are wildcards" in new MetricNameFixture {
-        getMetricName(KafkaProducerObjectName, ObjectNamesWithWildcardInValues) shouldBe Some(MetricMetadata("kafka-producer2", Map("type" -> "producer-node-metrics", "node-id" -> "node-1", "client-id" -> "producer-1")))
+        getMetricName(KafkaProducerObjectName, ObjectNamesWithWildcardInValues) shouldBe Some(MetricMetadata("kafka-producer2", TagSet.from(Map("type" -> "producer-node-metrics", "node-id" -> "node-1", "client-id" -> "producer-1"))))
       }
       "return the metrics name that matches the object name and all properties when properties overlap" in new SimilarMetricNameFixture {
-        getMetricName(KafkaConsumerObjectName, ObjectNamesWithWildcardInValues) shouldBe Some(MetricMetadata("kafka-consumer2", Map("type" -> "consumer-fetch-manager-metrics", "client-id" -> "client-1")))
-        getMetricName(KafkaConsumerExtendedObjectName, ObjectNamesWithWildcardInValues) shouldBe Some(MetricMetadata("kafka-consumer1", Map("topic" -> "test-topic", "type" -> "consumer-fetch-manager-metrics", "client-id" -> "client-1")))
+        getMetricName(KafkaConsumerObjectName, ObjectNamesWithWildcardInValues) shouldBe Some(MetricMetadata("kafka-consumer2", TagSet.from(Map("type" -> "consumer-fetch-manager-metrics", "client-id" -> "client-1"))))
+        getMetricName(KafkaConsumerExtendedObjectName, ObjectNamesWithWildcardInValues) shouldBe Some(MetricMetadata("kafka-consumer1", TagSet.from(Map("topic" -> "test-topic", "type" -> "consumer-fetch-manager-metrics", "client-id" -> "client-1"))))
       }
     }
     "collecting JMX metrics" should {
@@ -200,7 +202,7 @@ class MetricCollectorSpec extends WordSpec {
 
   trait JmxMetricConfigurationFixture {
 
-    val EmptyTags = Map.empty[String, String]
+    val EmptyTags: TagSet = TagSet.Empty
 
     protected val configWithInvalidJmxQuery: List[JmxMetricConfiguration] =
       JmxMetricConfiguration("os-mbean", "invalid-query",

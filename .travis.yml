@@ -1,4 +1,6 @@
 language: java
+jdk:
+  - openjdk8
 sudo: required
 services:
   - docker
@@ -10,6 +12,7 @@ jobs:
     script: "./scripts/stage.sh integration-test"
 env:
   global:
+  - CI_ENVIRONMENT=1
   - BINTRAY_USER=robvadai
   - secure: Haa5QD6ydWyXPsWf8pYoPZ6levhNXuSL+fCAnNeoRQI9qfXEnS110l8+I+3TFsUtD/FfNDn6rCT2XtZH0bjD2VZ/0o+ybv9dKeg0/E27VgKnnov0evqzuDYuIxtdbEQvU1oQadc67VRoJQYB1AS8K4r1EmwhLsPli1gn8ktouDumzsiVgww5kqHhcn7SrRKIvarJeatTQ9aupHYjxXRp9h4srGMR/CV5f1f9TkRksdU/IokYErOxRYmGRvnVCOZg8rwVxTCoOcyPOF5kfR/GgGxdMKypQXpE3zILdvLzbcbNAVG4ru2AuMWrYzG66USAbOKorcAuX9y3c8EZW5S+Vwww4egrgRb2Jg6e/5TPFW1QPcHds6/k9YMWTgrXGOWuYxWc4RuoZDGiJUtqbxKYPa1M+f140khl/AlzksD/Wg0rcVrUBd6KgMiAsfWqv/Gya18o83pJu3ngllABJf+XsvN4pIZzcvx66BApzp+DeZp5q7jRiKP8R2IBqULShICLHlW4sjW5hrIK0BNL/JCSg3M/dqrxSHD1j+zIzbOyMdn+Prg5JtqSVJMcFaUT0trC4LujQ2kZqvncCBj8p+X+rVEEjtjizpHxe8DD1OTUo65UQZvn6PEH8UyX/EqZcuf4/Zq3idduFqEwjrKnxaCBXK//H2czj5GHLSN5VACw6xM=
 before_deploy:

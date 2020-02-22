@@ -1,50 +1,51 @@
 package kamon.jmx.collector
 
-import kamon.{Kamon, Tags}
-import kamon.metric.{Metric, CounterMetric, HistogramMetric, GaugeMetric}
+import kamon.Kamon
+import kamon.metric.Instrument
+import kamon.tag.TagSet
 
 private[collector] object SupportedKamonMetricTypes {
 
   trait SupportedKamonMetricType {
-    type T <: Metric[_]
+    type T <: Instrument[_, _]
     protected def getMetricInstrument(metricName: String): T
-    private[collector] def recordValue(metricInstrument: T, value: Long, tags: Tags = Map.empty): Unit
+    private[collector] def recordValue(metricInstrument: T, value: Long, tags: TagSet = TagSet.Empty): Unit
 
-    def record(metricName: String, value: Long, tags: Tags = Map.empty): Unit = recordValue(getMetricInstrument(metricName), value, tags)
+    def record(metricName: String, value: Long, tags: TagSet = TagSet.Empty): Unit = recordValue(getMetricInstrument(metricName), value, tags)
   }
 
   case object Counter extends SupportedKamonMetricType {
-    override type T = CounterMetric
-    override protected def getMetricInstrument(metricName: String): CounterMetric = Kamon.counter(metricName)
-    override private[collector] def recordValue(metricInstrument: CounterMetric, value: Long, tags: Tags = Map.empty): Unit =
-      metricInstrument.refine(tags).increment(value)
+    override type T = kamon.metric.Counter
+    override protected def getMetricInstrument(metricName: String): T = Kamon.counter(metricName).withoutTags()
+    override private[collector] def recordValue(metricInstrument: T, value: Long, tags: TagSet = TagSet.Empty): Unit =
+      metricInstrument.withTags(tags).increment(value)
   }
 
   case object Histogram extends SupportedKamonMetricType {
-    override type T = HistogramMetric
-    override protected def getMetricInstrument(metricName: String): HistogramMetric = Kamon.histogram(metricName)
-    override private[collector] def recordValue(metricInstrument: HistogramMetric, value: Long, tags: Tags = Map.empty): Unit =
-      metricInstrument.refine(tags).record(value)
+    override type T = kamon.metric.Histogram
+    override protected def getMetricInstrument(metricName: String): T = Kamon.histogram(metricName).withoutTags()
+    override private[collector] def recordValue(metricInstrument: T, value: Long, tags: TagSet = TagSet.Empty): Unit =
+      metricInstrument.withTags(tags).record(value)
   }
 
   trait Gauge extends SupportedKamonMetricType {
-    override type T = GaugeMetric
-    override protected def getMetricInstrument(metricName: String): GaugeMetric = Kamon.gauge(metricName)
+    override type T = kamon.metric.Gauge
+    override protected def getMetricInstrument(metricName: String): T = Kamon.gauge(metricName).withoutTags()
   }
 
   case object IncrementingGauge extends Gauge {
-    override private[collector] def recordValue(metricInstrument: GaugeMetric, value: Long, tags: Tags = Map.empty): Unit =
-      metricInstrument.refine(tags).increment(value)
+    override private[collector] def recordValue(metricInstrument: T, value: Long, tags: TagSet = TagSet.Empty): Unit =
+      metricInstrument.withTags(tags).increment(value)
   }
 
   case object DecrementingGauge extends Gauge {
-    override private[collector] def recordValue(metricInstrument: GaugeMetric, value: Long, tags: Tags = Map.empty): Unit =
-      metricInstrument.refine(tags).decrement(value)
+    override private[collector] def recordValue(metricInstrument: T, value: Long, tags: TagSet = TagSet.Empty): Unit =
+      metricInstrument.withTags(tags).decrement(value)
   }
 
   case object PunctualGauge extends Gauge {
-    override private[collector] def recordValue(metricInstrument: GaugeMetric, value: Long, tags: Tags = Map.empty): Unit =
-      metricInstrument.refine(tags).set(value)
+    override private[collector] def recordValue(metricInstrument: T, value: Long, tags: TagSet = TagSet.Empty): Unit =
+      metricInstrument.withTags(tags).update(value)
   }
 
   def parse: PartialFunction[String, SupportedKamonMetricType] = {

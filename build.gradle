@@ -68,7 +68,7 @@ dependencies {
     "io.kamon:kamon-core_%%:${kamonVersion}",
     "com.typesafe.akka:akka-actor_%%:${akkaVersion}",
     "com.typesafe.akka:akka-testkit_%%:${akkaVersion}",
-    "io.kamon:kamon-prometheus_%%:1.0.0",
+    "io.kamon:kamon-prometheus_%%:${kamonPrometheusVersion}",
     "org.apache.kafka:kafka_%%:1.1.0",
     "org.slf4j:slf4j-api:1.7.25",
     "org.slf4j:slf4j-simple:1.7.25"

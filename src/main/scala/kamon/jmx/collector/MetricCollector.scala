@@ -5,8 +5,8 @@ import java.{util => javautil}
 import com.segence.commons.jmx.collector.{JmxCollector, MBeanMetricResult}
 import javax.management.ObjectName
 import javax.management.openmbean.CompositeData
-import kamon.Tags
 import kamon.jmx.collector.SupportedKamonMetricTypes.SupportedKamonMetricType
+import kamon.tag.TagSet
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
@@ -16,7 +16,7 @@ private[collector] object MetricCollector {
 
   private val TypeAttributeName = "type"
 
-  case class MetricMetadata(metricName: String, metricTags: Tags = Map.empty)
+  case class MetricMetadata(metricName: String, metricTags: TagSet = TagSet.Empty)
 
   def getJmxMbeanEntities(configuration: List[JmxMetricConfiguration]):
     (Map[ObjectName, Set[String]], Map[ObjectName, String], List[(String, ObjectName, List[JmxMetricAttribute])], List[Throwable]) = {
@@ -81,9 +81,9 @@ private[collector] object MetricCollector {
         } else {
           val metricTags = zippedProperties.filter { case (jmxProperty, _) =>
             jmxProperty.getKey == TypeAttributeName || jmxProperty.getValue == "*"
-          }.map { case (_, queryProperty) =>
-            (queryProperty.getKey, queryProperty.getValue)
-          }.toMap
+          }.foldLeft(TagSet.Empty) { case (tags, (_, queryProperty)) =>
+            tags.withTag(queryProperty.getKey, queryProperty.getValue)
+          }
 
           Option(MetricMetadata(metricName, metricTags))
         }
@@ -101,7 +101,7 @@ private[collector] object MetricCollector {
                      configWithObjectNames: List[(String, ObjectName, List[JmxMetricAttribute])],
                      errorsFromConfigWithObjectNames: List[Throwable],
                      queryJmxBeansFn: javautil.Map[ObjectName, javautil.Set[String]] => javautil.Set[MBeanMetricResult]
-                    ): (List[(MetricMetadata, String, Any, Tags, SupportedKamonMetricType)], List[Throwable]) = {
+                    ): (List[(MetricMetadata, String, Any, TagSet, SupportedKamonMetricType)], List[Throwable]) = {
 
     val metricNamesAndValues =
       queryJmxBeansFn(jmxMbeansAndAttributes.map { case (objectName, attributes) =>
@@ -160,7 +160,7 @@ private[collector] object MetricCollector {
   }
 
   @tailrec
-  private def extractMetricsAndErrors(metrics: List[(String, String, List[String], Any, Tags, SupportedKamonMetricType)], results: (List[(String, Long, Tags, SupportedKamonMetricType)], List[Throwable])): (List[(String, Long, Tags, SupportedKamonMetricType)], List[Throwable]) =
+  private def extractMetricsAndErrors(metrics: List[(String, String, List[String], Any, TagSet, SupportedKamonMetricType)], results: (List[(String, Long, TagSet, SupportedKamonMetricType)], List[Throwable])): (List[(String, Long, TagSet, SupportedKamonMetricType)], List[Throwable]) =
     metrics match {
       case Nil =>
         results
@@ -210,7 +210,7 @@ private[collector] object MetricCollector {
                       jmxMbeansAndAttributes: Map[ObjectName, Set[String]],
                       jmxMbeansAndMetricNames: Map[ObjectName, String],
                       configWithObjectNames: List[(String, ObjectName, List[JmxMetricAttribute])],
-                      errorsFromConfigWithObjectNames: List[Throwable]): (List[(String, Long, Tags, SupportedKamonMetricType)], List[Throwable]) = {
+                      errorsFromConfigWithObjectNames: List[Throwable]): (List[(String, Long, TagSet, SupportedKamonMetricType)], List[Throwable]) = {
     val (results, errors) =
       collectMetrics(jmxMbeansAndAttributes, jmxMbeansAndMetricNames, configWithObjectNames, errorsFromConfigWithObjectNames, JmxCollector.queryAsSet)
 
