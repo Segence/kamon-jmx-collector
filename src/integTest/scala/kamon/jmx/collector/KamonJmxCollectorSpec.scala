@@ -8,19 +8,44 @@ import kamon.prometheus.PrometheusReporter
 import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer}
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
 import org.apache.kafka.common.serialization.{ByteArrayDeserializer, StringSerializer}
+import org.scalactic.Prettifier
 import org.scalatest.{Assertion, FlatSpec}
 import org.scalatest.Matchers._
 import org.scalatest.concurrent.Eventually
+import org.scalatest.matchers.{MatchResult, Matcher}
 import org.scalatest.time.{Minute, Seconds, Span}
 
 import scala.collection.JavaConverters._
 
-class KamonJmxCollectorSpec extends FlatSpec with Eventually {
+final class IncludeWords {
+  def apply(parts: List[String]): Matcher[String] =
+    new Matcher[String] {
+      def apply(left: String): MatchResult =
+        MatchResult(
+          parts.forall(left contains _),
+          s"String $left did not contain all parts ${parts.mkString}",
+          s"String $left contained all parts  ${parts.mkString}",
+          Vector(left, parts)
+        )
+      override def toString: String =
+        "include (" + Prettifier.default(parts) + ")"
+    }
+}
 
+class KamonJmxCollectorSpec extends FlatSpec with Eventually {
+  val includeAll = new IncludeWords
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(1, Minute)), interval = scaled(Span(5, Seconds)))
 
-  def doSomeEntriesBeginWith(lines: List[String], beginWith: String): Assertion = atLeast(1, lines) should startWith(beginWith) 
+  def doSomeEntriesBeginWith(lines: List[String], beginWith: String): Assertion = atLeast(1, lines) should startWith(beginWith)
+
+  def doSomeEntriesLookLike(lines: List[String],
+                            prefix: String,
+                            entries: List[String] = List.empty): Assertion = {
+    val strings = lines.filter(_ startsWith prefix)
+    println(lines.size + " " + strings.size + ": " + strings)
+    atLeast(1, strings) should includeAll(entries)
+  }
 
   "Kamon JMX collector" should "successfully collect JMX metrics and publish them to Kamon" in {
 
@@ -61,20 +86,50 @@ class KamonJmxCollectorSpec extends FlatSpec with Eventually {
       doSomeEntriesBeginWith(metrics, "jmx_os_memory_HeapMemoryUsage_max")
       doSomeEntriesBeginWith(metrics, "jmx_os_memory_ObjectPendingFinalizationCount")
 
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_connection_count_bucket{client_id="consumer-1",type="consumer-metrics"""")
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_connection_count_bucket{client_id="consumer-2",type="consumer-metrics"""")
+      doSomeEntriesLookLike(metrics, "jmx_kafka_consumer_fetch_manager_topic_bytes_consumed_rate",
+        List("""client_id="consumer-test-group-1""", """topic="test""", """type="consumer-fetch-manager-metrics"}""")
+      )
+      doSomeEntriesLookLike(metrics, "jmx_kafka_consumer_fetch_manager_records_lag_max",
+        List("""client_id="consumer-test-group-1""" , """type="consumer-fetch-manager-metrics"""")
+      )
+      doSomeEntriesLookLike(metrics, "jmx_kafka_consumer_fetch_manager_records_lag_max",
+        List("""client_id="consumer-test-group-2""", """type="consumer-fetch-manager-metrics""")
+      )
+      doSomeEntriesLookLike(metrics, "jmx_kafka_consumer_connection_count_bucket",
+        List("""client_id="consumer-test-group-1""", """type="consumer-metrics""")
+      )
+      doSomeEntriesLookLike(metrics, "jmx_kafka_consumer_connection_count_bucket",
+        List("""client_id="consumer-test-group-2""", """type="consumer-metrics""")
+      )
+      doSomeEntriesLookLike(metrics, "jmx_kafka_producer1_outgoing_byte_rate",
+        List("""client_id="producer-1""", """type="producer-metrics""")
+      )
+      doSomeEntriesLookLike(metrics, "jmx_kafka_producer1_network_io_rate",
+        List("""client_id="producer-1""", """type="producer-metrics""")
+      )
 
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer1_outgoing_byte_rate{client_id="producer-1",type="producer-metrics"}""")
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer1_network_io_rate{client_id="producer-1",type="producer-metrics"}""")
+      doSomeEntriesLookLike(metrics, "jmx_kafka_producer2_node_metrics_incoming_byte_rate",
+        List("""type="producer-node-metrics""","""client_id="producer-1""","""node_id="node-1""")
+        )
+      doSomeEntriesLookLike(metrics, "jmx_kafka_producer2_node_metrics_outgoing_byte_rate",
+        List("""type="producer-node-metrics""","""client_id="producer-1""","""node_id="node-1""")
+        )
+      doSomeEntriesLookLike(metrics, "jmx_kafka_producer2_node_metrics_incoming_byte_rate",
+        List("""type="producer-node-metrics""","""client_id="producer-1""","""node_id="node--1""")
+        )
+      doSomeEntriesLookLike(metrics, "jmx_kafka_producer2_node_metrics_outgoing_byte_rate",
+        List("""type="producer-node-metrics""","""client_id="producer-1""","""node_id="node--1""")
+        )
 
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_incoming_byte_rate{type="producer-node-metrics",client_id="producer-1",node_id="node-1"}""")
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_outgoing_byte_rate{type="producer-node-metrics",client_id="producer-1",node_id="node-1"}""")
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_incoming_byte_rate{type="producer-node-metrics",client_id="producer-1",node_id="node--1"}""")
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_producer2_node_metrics_outgoing_byte_rate{type="producer-node-metrics",client_id="producer-1",node_id="node--1"}""")
-
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_fetch_manager_topic_bytes_consumed_rate{client_id="consumer-1",topic="test",type="consumer-fetch-manager-metrics"}""")
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_fetch_manager_records_lag_max{client_id="consumer-1",type="consumer-fetch-manager-metrics"}""")
-      doSomeEntriesBeginWith(metrics, """jmx_kafka_consumer_fetch_manager_records_lag_max{client_id="consumer-2",type="consumer-fetch-manager-metrics"}""")
+      doSomeEntriesLookLike(metrics, "jmx_kafka_consumer_fetch_manager_topic_bytes_consumed_rate",
+        List("""client_id="consumer-test-group-1""","""topic="test""","""type="consumer-fetch-manager-metrics""")
+        )
+      doSomeEntriesLookLike(metrics, "jmx_kafka_consumer_fetch_manager_records_lag_max",
+        List("""client_id="consumer-test-group-1""","""type="consumer-fetch-manager-metrics""")
+        )
+      doSomeEntriesLookLike(metrics, "jmx_kafka_consumer_fetch_manager_records_lag_max",
+        List("""client_id="consumer-test-group-2""","""type="consumer-fetch-manager-metrics""")
+        )
     }
   }
 }
