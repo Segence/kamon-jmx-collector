@@ -117,7 +117,7 @@ class KamonJmxCollectorSpec extends FlatSpec with Eventually {
         List("""type="producer-node-metrics""","""client_id="producer-1""","""node_id="node--1""")
         )
       doSomeEntriesLookLike(metrics, "jmx_kafka_producer2_node_metrics_outgoing_byte_rate",
-        List("""type="producer-node-metrics""","""client_id="producer-1""","""node_id="node--3""")
+        List("""type="producer-node-metrics""","""client_id="producer-1""","""node_id="node--1""")
         )
 
       doSomeEntriesLookLike(metrics, "jmx_kafka_consumer_fetch_manager_topic_bytes_consumed_rate",
